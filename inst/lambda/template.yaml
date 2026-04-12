@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: KopfLab micrologger webhook handler
+
+Globals:
+  Function:
+    Runtime: python3.14
+    Timeout: 30
+    MemorySize: 128
+    VpcConfig:
+      SubnetIds:
+        - subnet-0cfad7817e15351be
+        - subnet-08b82252a8e3ce461
+        - subnet-0e46849dbac0b9f00
+      SecurityGroupIds:
+        - sg-08cae65a1db33b47c
+    Environment:
+      Variables:
+        LOCAL: FALSE
+
+Resources:
+  MicrologgerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: kopflab-micrologger
+      Description: Processes micrologger webhook payloads from Particle Cloud
+      Handler: lambda_function.lambda_handler
+      CodeUri: .
+      Role: arn:aws:iam::713881824347:role/kopflab-lambda-role
+      Events:
+        WebhookPost:
+          Type: Api
+          Properties:
+            Path: /micrologger
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-amazonaws.com/Prod/micrologger"
+  FunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt MicrologgerFunction.Arn
