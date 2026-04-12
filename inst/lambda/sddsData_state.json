@@ -1,0 +1,241 @@
+{
+    "core_id": "test1",
+    "published_at": "2026-04-10T14:50:22.070Z",
+    "payload": [
+        {
+            "n": "p2026-02",
+            "s": {
+                "HARDWARE": {
+                    "dimmer": null,
+                    "display": {
+                        "refresh_ms": 1000,
+                        "startup_ms": 6000
+                    },
+                    "dpot1": null,
+                    "dpot2": null,
+                    "expander": null,
+                    "gain": {
+                        "base_Ohm": 56000
+                    },
+                    "motor": {
+                        "autoAdjust": "on",
+                        "autoAdjustSpeedTolerance_rpm": 2,
+                        "maxSpeed_rpm": 5000,
+                        "minSpeed_rpm": 50,
+                        "readInterval_ms": 500,
+                        "speedCheckInterval_ms": 50
+                    },
+                    "pcbVersions": null,
+                    "signal": {
+                        "interval_ms": 10,
+                        "maxValue": 3890,
+                        "reads": 50
+                    },
+                    "temperature": null,
+                    "voltage": {
+                        "interval_ms": 200,
+                        "reads": 5
+                    }
+                },
+                "SYSTEM": {
+                    "name": "p2026-02",
+                    "publishing": {
+                        "bursts": {
+                            "timer_ms": 3000
+                        },
+                        "event": "sddsData",
+                        "globalInterval_ms": 600000,
+                        "publish": "OFF",
+                        "varIntervals_ms": {
+                            "SYSTEM": {
+                                "action": 0,
+                                "id": 0,
+                                "internet": 0,
+                                "name": 1,
+                                "publishing": {
+                                    "bursts": {
+                                        "discarded": 0,
+                                        "failed": 0,
+                                        "invalid": 0,
+                                        "queued": 0,
+                                        "sending": 0,
+                                        "sent": 0,
+                                        "timer_ms": 1
+                                    },
+                                    "event": 1,
+                                    "globalInterval_ms": 1,
+                                    "nextGlobalPublish": 0,
+                                    "publish": 1
+                                },
+                                "startup": 0,
+                                "state": {
+                                    "error": 0,
+                                    "lastSave_dt": 2,
+                                    "size_byte": 0,
+                                    "status": 2
+                                },
+                                "type": 0,
+                                "version": 0,
+                                "vitals": {
+                                    "freeFlash_byte": 0,
+                                    "freeRAM_byte": 0,
+                                    "freeSectors": 0,
+                                    "lastRestart": 2,
+                                    "mac": 0,
+                                    "network": 0,
+                                    "publishVitals_sec": 1,
+                                    "signal_percent": 0,
+                                    "time_dt": 0,
+                                    "totalFlash_byte": 0,
+                                    "totalRAM_byte": 0,
+                                    "totalSectors": 0
+                                }
+                            },
+                            "device": 1,
+                            "environment": {
+                                "error": 1,
+                                "powerReq_V": 0,
+                                "power_V": 0,
+                                "readInterval_ms": 1,
+                                "temperature_C": -1
+                            },
+                            "lights": {
+                                "action": 0,
+                                "error": 1,
+                                "event": 0,
+                                "fan": {
+                                    "action": 0,
+                                    "state": 1,
+                                    "status": 0
+                                },
+                                "intensity_percent": 1,
+                                "scheduleInfo": 0,
+                                "scheduleOff_sec": 1,
+                                "scheduleOnStart_HHMM": 1,
+                                "scheduleOn_sec": 1,
+                                "state": 1,
+                                "status": 0
+                            },
+                            "sensor": {
+                                "action": 0,
+                                "beam": {
+                                    "error": 0,
+                                    "status": 0
+                                },
+                                "error": 1,
+                                "gain": {
+                                    "automatic": 0,
+                                    "error": 0,
+                                    "gain_Ohm": 1,
+                                    "max_ppt": 0,
+                                    "status": 0,
+                                    "target_ppt": 1,
+                                    "zeroPause_ms": 1
+                                },
+                                "reading": {
+                                    "OD": -1,
+                                    "ODSd": 0,
+                                    "bgrd": 0,
+                                    "bgrdSd": 0,
+                                    "cooldown_ms": 1,
+                                    "nextRead": 0,
+                                    "readInterval_ms": 1,
+                                    "saturation_ppt": 0,
+                                    "signal": 0,
+                                    "signalSd": 0,
+                                    "stopStirrer": 1,
+                                    "transmittance": 0,
+                                    "transmittanceSd": 0,
+                                    "vortex": 1,
+                                    "wait_ms": 1,
+                                    "warmup_ms": 1
+                                },
+                                "status": 0,
+                                "zero": {
+                                    "bgrd": 1,
+                                    "bgrdSd": 1,
+                                    "last_dt": 1,
+                                    "signal": 1,
+                                    "signalSd": 1,
+                                    "valid": 1
+                                }
+                            },
+                            "stirrer": {
+                                "action": 0,
+                                "error": 1,
+                                "event": 0,
+                                "setpoint_rpm": 1,
+                                "settings": {
+                                    "acceleration_rpm_s": 1,
+                                    "deceleration_rpm_s": 1,
+                                    "maxSpeed_rpm": 1,
+                                    "vortexSpeed_rpm": 1,
+                                    "vortexTime_sec": 1
+                                },
+                                "speed_rpm": -1,
+                                "state": 1,
+                                "status": 0
+                            }
+                        }
+                    },
+                    "state": {
+                        "lastSave_dt": "2026-04-09T19:26:57Z"
+                    },
+                    "vitals": {
+                        "publishVitals_sec": 21600
+                    }
+                },
+                "environment": {
+                    "powerReq_V": 20,
+                    "readInterval_ms": 1000
+                },
+                "lights": {
+                    "fan": {
+                        "state": "withLight"
+                    },
+                    "intensity_percent": 100,
+                    "scheduleOff_sec": 43200,
+                    "scheduleOnStart_HHMM": 1200,
+                    "scheduleOn_sec": 43200,
+                    "state": "off"
+                },
+                "sensor": {
+                    "beam": null,
+                    "gain": {
+                        "gain_Ohm": 56000,
+                        "target_ppt": 920,
+                        "zeroPause_ms": 60000
+                    },
+                    "reading": {
+                        "cooldown_ms": 500,
+                        "readInterval_ms": 60000,
+                        "stopStirrer": "yes",
+                        "vortex": "no",
+                        "wait_ms": 0,
+                        "warmup_ms": 3000
+                    },
+                    "zero": {
+                        "bgrd": 0,
+                        "bgrdSd": 0,
+                        "last_dt": "never",
+                        "signal": 0,
+                        "signalSd": 0,
+                        "valid": "no"
+                    }
+                },
+                "stirrer": {
+                    "setpoint_rpm": 500,
+                    "settings": {
+                        "acceleration_rpm_s": 500,
+                        "deceleration_rpm_s": 3000,
+                        "maxSpeed_rpm": 5000,
+                        "vortexSpeed_rpm": 3000,
+                        "vortexTime_sec": 2
+                    },
+                    "state": "off"
+                }
+            },
+            "tb": "2026-04-10T20:05:05Z"
+        }
+    ]
+}

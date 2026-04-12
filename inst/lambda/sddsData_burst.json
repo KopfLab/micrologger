@@ -1,0 +1,32 @@
+{
+    "core_id": "test1",
+    "published_at": "2026-04-10T14:50:22.070Z",
+    "payload": [
+        {
+            "b": [
+                {
+                    "SYSTEM.vitals.lastRestart": [
+                        {
+                            "c": "powerUp",
+                            "o": 0
+                        }
+                    ]
+                },
+                {
+                    "SYSTEM.state.status": [
+                        {
+                            "c": "failedLoad",
+                            "o": 0
+                        },
+                        {
+                            "c": "normal",
+                            "o": 10532
+                        }
+                    ]
+                }
+            ],
+            "n": "p2026-03",
+            "tb": "2026-04-10T15:20:32Z"
+        }
+    ]
+}
