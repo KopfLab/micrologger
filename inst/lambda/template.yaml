@@ -39,7 +39,7 @@ Resources:
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL
-    Value: !Sub "https://${ServerlessRestApi}.execute-amazonaws.com/Prod/micrologger"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.us-east-1.amazonaws.com/Prod/micrologger"
   FunctionArn:
     Description: Lambda function ARN
     Value: !GetAtt MicrologgerFunction.Arn
