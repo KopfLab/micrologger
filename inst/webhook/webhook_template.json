@@ -1,0 +1,13 @@
+{
+    "name": "sddsData",
+    "event": "sddsData",
+    "url": "https://{{API-ID}}.execute-api.us-east-1.amazonaws.com/Prod/micrologger",
+    "requestType": "POST",
+    "mydevices": true,
+    "noDefaults": true,
+    "headers": {
+        "Content-Type": "application/json",
+        "x-api-key": "{{API-KEY}}"
+    },
+    "body": "{\"core_id\": \"{{{PARTICLE_DEVICE_ID}}}\", \"published_at\": \"{{{PARTICLE_PUBLISHED_AT}}}\", \"payload\": {{{PARTICLE_EVENT_VALUE}}}}"
+}
