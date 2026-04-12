@@ -42,7 +42,7 @@ aws iam put-role-policy \
 
 - deploy the lambda function with `sam build && sam deploy` (configuration comes from samconfig.toml)
 - check that deployment worked and fetch API endpoint with `aws cloudformation describe-stacks --stack-name kopflab-micrologger --query "Stacks[0].Outputs"`
-- the endpoint will have the format `<<API-ID}}.execute-api.us-east-1.amazonaws.com/Prod/micrologger` (see template.yaml `Outputs` section)
+- the endpoint will have the format `{{API-ID}}.execute-api.us-east-1.amazonaws.com/Prod/micrologger` (see template.yaml `Outputs` section)
 - note that the configuration in `template.yaml` also sets up the API gateway, though credentials still need ot be set up
 
 # API gateway
@@ -54,10 +54,10 @@ aws iam put-role-policy \
 
 ## Create usage plan
 
-- create a usage plan with the `API-ID` from earlier: `aws apigateway create-usage-plan --name kopflab-usage-plan --api-stages apiId=<<API-ID}},stage=Prod`
+- create a usage plan with the `API-ID` from earlier: `aws apigateway create-usage-plan --name kopflab-usage-plan --api-stages apiId={{API-ID}},stage=Prod`
 - note the `id` from the output (`USAGE-ID`)
 - attach API key to the usage plan (note that `API_KEY` is a constant here not the earlier value from the key!):
-- `aws apigateway create-usage-plan-key --usage-plan-id <<USAGE-ID}} --key-id <<KEY-ID}} --key-type API_KEY`
+- `aws apigateway create-usage-plan-key --usage-plan-id {{USAGE-ID}} --key-id {{KEY-ID}} --key-type API_KEY`
 - the return's `value` should be the `API-KEY` value from the earlier API key generation, this is what we need to setup the webhook
 
 ## Test API Gateway
@@ -73,3 +73,7 @@ curl -X POST \
 ```
 
 - check the logs with `aws logs tail /aws/lambda/kopflab-micrologger --follow`
+
+# Next step
+
+Setup the particle webhook by following the webhook/README.md
