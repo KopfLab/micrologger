@@ -24,9 +24,11 @@
 - `aws ec2 create-security-group --group-name kopflab-rds-sg --description "KopfLab RDS security group" --vpc-id {{VpcId}}`
 - note the resulting `GroupId`
 - allow everything inside the VPC to reach the postgres DB (port 5432):
-- `aws ec2 authorize-security-group-ingress --group-id <<GroupId>> --protocol tcp --port 5432 --cidr 172.31.0.0/16`
-- allow admin IP (figure out your IP and replace `<<IP>>` placeholder) to access the DB:
-- `aws ec2 authorize-security-group-ingress --group-id <<GroupId>> --protocol tcp --port 5432 --cidr <<IP>/32`
+- `aws ec2 authorize-security-group-ingress --group-id {{GroupId}} --protocol tcp --port 5432 --cidr 172.31.0.0/16`
+- also specifically alow inbound traffic from the Lambda function (port 443):
+- `aws ec2 authorize-security-group-ingress --group-id {{GroupId}} --protocol tcp --port 443 --cidr 172.31.0.0/16`
+- allow admin IP (figure out your IP and replace `{{IP}}` placeholder) to access the DB:
+- `aws ec2 authorize-security-group-ingress --group-id {{GroupId}} --protocol tcp --port 5432 --cidr {{IP>/32`
 
 # Database
 
@@ -159,6 +161,22 @@ aws secretsmanager create-secret \
     "proxy": "{{ProxyEndpoint}}"
   }'
 ```
+
+## Provide VPC endpoint for secrets manager
+
+- to provide access to the secrets manager inside the VPC (without needing internet access), run the following (the lambda function needs this to access the DB secrets):
+
+```bash
+aws ec2 create-vpc-endpoint \
+  --vpc-id {{VpcId}} \
+  --vpc-endpoint-type Interface \
+  --service-name com.amazonaws.us-east-1.secretsmanager \
+  --subnet-ids {{SubnetId1}} {{SubnetId2}} {{SubnetId3}} \
+  --security-group-ids {{GroupId}} \
+  --private-dns-enabled
+```
+
+- check when the endpoint is up with `aws ec2 describe-vpc-endpoints --filters "Name=vpc-id Values={{VpcId}}" --query "VpcEndpoints[*].{Service:ServiceName,State:State,Type:VpcEndpointType}"`
 
 # Next steps
 
