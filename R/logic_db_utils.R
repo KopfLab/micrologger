@@ -80,7 +80,7 @@ to_sql <- function(..., named = FALSE) {
     if (is.null(.x) || is.na(.x)) {
       "NULL"
     } else if (is.character(.x)) {
-      sprintf("'%s'", str_replace(.x, fixed("'"), "''"))
+      sprintf("'%s'", stringr::str_replace(.x, stringr::fixed("'"), "''"))
     } else if (is.numeric(.x)) {
       as.character(.x)
     } else if (is.logical(.x)) {
@@ -104,7 +104,7 @@ df_to_sql <- function(df) {
   df |>
     ungroup() |>
     mutate(rowid = row_number()) |>
-    nest(data = c(-rowid)) |>
+    tidyr::nest(data = c(-rowid)) |>
     mutate(sql = purrr::map_chr(data, ~ to_sql(as.list(.x)))) |>
     pull(sql) |>
     paste(collapse = "), (") |>
@@ -114,24 +114,33 @@ df_to_sql <- function(df) {
 # make insert statement from data frame
 df_to_insert_sql <- function(df, table) {
   sprintf(
-    "INSERT INTO {table} (%s) VALUES {%s}",
+    "INSERT INTO %s (%s) VALUES %s",
+    table,
     paste(names(df), collapse = ", "),
     df_to_sql(df)
   )
 }
 
 # run sql with error catching
-run_sql <- function(sql, con = db(), .env = caller_env()) {
-  tryCatch(
-    result <- dbExecute(con, as.character(sql)),
-    error = function(e) {
-      cli_abort(
-        c("SQL statement failed", "i" = "{sql}"),
-        parent = e,
-        call = .env
-      )
-    }
-  )
+# @param execute_only - if set, runs DBExecute (return value is number of rows affecgted), if FALSE, runs dbGetQuery and returns whatever the query specifes
+run_sql <- function(sql, con = db(), .env = caller_env(), execute_only = TRUE) {
+  result <-
+    tryCatch(
+      {
+        if (execute_only) {
+          DBI::dbExecute(con, as.character(sql))
+        } else {
+          DBI::dbGetQuery(con, as.character(sql))
+        }
+      },
+      error = function(e) {
+        cli_abort(
+          c("SQL statement failed", "i" = "{sql}"),
+          parent = e,
+          call = .env
+        )
+      }
+    )
   return(result)
 }
 
@@ -141,9 +150,10 @@ run_insert_sql <- function(
   table,
   con = db(),
   on_conflict_constraint = NULL,
-  on_conflict_do = "nothing"
+  on_conflict_do = "nothing",
+  return_column = NULL
 ) {
-  sql <- df_to_insert_sql(table)
+  sql <- df_to_insert_sql(df, table)
   if (!is.null(on_conflict_constraint)) {
     sql <- sql |>
       paste(
@@ -153,12 +163,23 @@ run_insert_sql <- function(
         on_conflict_do
       )
   }
+  if (!is.null(return_column)) {
+    sql <- sql |>
+      paste("RETURNING", return_column)
+  }
 
   # run
-  result <- sql |> run_sql(con)
+  result <- sql |> run_sql(con, execute_only = is.null(return_column))
 
-  cli::cli_inform(
-    "{result} record{?s} created{if (!is.null(on_conflict_constraint)) ' or updated'}."
-  )
+  # info
+  if (is.null(return_column)) {
+    cli::cli_alert_success(
+      "{result} record{?s} created{if (!is.null(on_conflict_constraint)) ' or updated'}."
+    )
+  } else {
+    cli::cli_alert_success(
+      "Created{if (!is.null(on_conflict_constraint)) ' or updated'} {.field {table}} record with id {col_magenta(result[[1]])}."
+    )
+  }
   return(result)
 }
