@@ -165,3 +165,57 @@ ml_unlink_devices_from_experiment <- function(
   cli_alert_success("{deleted} link{?s} deleted.")
   return(invisible(NULL))
 }
+
+
+#' @export
+ml_experiment_start_recording <- function(exp_id, con = db()) {
+  # safety checks
+  exp_id |>
+    check_arg(
+      !missing(exp_id) && is_scalar_integerish(exp_id),
+      "must be a single exp_id"
+    )
+
+  # information
+  cli_alert_info(
+    "Starting recording for {.field experiment} {col_magenta(exp_id)}."
+  )
+
+  # run SQL
+  sql <- sprintf(
+    "UPDATE experiments SET recording = true, 
+    last_recording_change = CASE WHEN recording IS NOT TRUE THEN %s ELSE last_recording_change END, 
+    current_segment = CASE WHEN recording IS NOT TRUE THEN current_segment + 1 ELSE current_segment END
+    WHERE exp_id = %s",
+    to_sql(format(lubridate::now('UTC'))),
+    to_sql(exp_id)
+  )
+  result <- sql |> run_sql(con)
+  return(invisible(result))
+}
+
+#' @export
+ml_experiment_stop_recording <- function(exp_id, con = db()) {
+  # safety checks
+  exp_id |>
+    check_arg(
+      !missing(exp_id) && is_scalar_integerish(exp_id),
+      "must be a single exp_id"
+    )
+
+  # information
+  cli_alert_info(
+    "Stopping recording for {.field experiment} {col_magenta(exp_id)}."
+  )
+
+  # run SQL
+  sql <- sprintf(
+    "UPDATE experiments SET recording = false, 
+    last_recording_change = CASE WHEN recording IS TRUE THEN %s ELSE last_recording_change END
+    WHERE exp_id = %s",
+    to_sql(format(lubridate::now('UTC'))),
+    to_sql(exp_id)
+  )
+  result <- sql |> run_sql(con)
+  return(invisible(result))
+}
