@@ -29,7 +29,10 @@ Imports:
     shinycssloaders,
     rlog,
     prompter,
-    DT
+    DT,
+    DBI,
+    RPostgres,
+    sddsParticle
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
