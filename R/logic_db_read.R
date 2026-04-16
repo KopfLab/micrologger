@@ -44,16 +44,11 @@ ml_get_devices <- function(
   df <- tbl(con, "devices") |>
     left_join(tbl(con, "structures"), by = c("type", "version")) |>
     left_join(
-      tbl(con, "experiment_devices") |> dplyr::select("core_id", "exp_id"),
-      by = "core_id"
-    ) |>
-    left_join(
       tbl(con, "experiments") |>
         dplyr::filter(!archived) |>
-        dplyr::select("exp_id", "user_id", "user_first", "user_last"),
-      by = "exp_id"
-    ) |>
-    slice_max(exp_id, by = "core_id", n = 1L)
+        dplyr::select("exp_id", "name", "user_id", "user_first", "user_last"),
+      by = c("control_exp_id" = "exp_id")
+    )
 
   if (!is.null(group_id)) {
     group_id <- stringr::str_to_upper(group_id)
@@ -158,6 +153,18 @@ ml_get_experiment_devices <- function(
   df <-
     tbl(con, "experiment_devices") |>
     left_join(tbl(con, "devices"), by = "core_id") |>
+    left_join(
+      tbl(con, "experiments") |>
+        dplyr::filter(!archived) |>
+        dplyr::select(
+          "control_exp_id" = "exp_id",
+          "name",
+          "user_id",
+          "user_first",
+          "user_last"
+        ),
+      by = "control_exp_id"
+    ) |>
     dplyr::filter(exp_id %in% !!exp_id)
 
   if (!quo_is_null(filter_quo)) {

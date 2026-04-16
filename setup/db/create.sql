@@ -15,6 +15,26 @@ CREATE TABLE groups
     group_desc TEXT
 );
 
+-- Table: experiments
+
+DROP TABLE IF EXISTS experiments CASCADE;
+
+CREATE TABLE experiments
+(
+  exp_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  group_id TEXT NOT NULL REFERENCES groups(group_id),
+  user_id TEXT NOT NULL,
+  user_first TEXT,
+  user_last TEXT,
+  name TEXT,
+  description TEXT,
+  notes TEXT,
+  recording BOOLEAN NOT NULL DEFAULT FALSE,
+  current_segment INTEGER NOT NULL DEFAULT 0,
+  last_recording_change TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  archived BOOLEAN NOT NULL DEFAULT FALSE
+);
+
 -- Table: structures
 
 DROP TABLE IF EXISTS structures CASCADE;
@@ -38,28 +58,10 @@ CREATE TABLE devices
     published_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     type TEXT,
     version INTEGER,
-    values_json TEXT
+    values_json TEXT,
+    control_exp_id INTEGER REFERENCES experiments(exp_id)
 );
 
--- Table: experiments
-
-DROP TABLE IF EXISTS experiments CASCADE;
-
-CREATE TABLE experiments
-(
-  exp_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  group_id TEXT NOT NULL REFERENCES groups(group_id),
-  user_id TEXT NOT NULL,
-  user_first TEXT,
-  user_last TEXT,
-  name TEXT,
-  description TEXT,
-  notes TEXT,
-  recording BOOLEAN NOT NULL DEFAULT FALSE,
-  current_segment INTEGER NOT NULL DEFAULT 0,
-  last_recording_change TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  archived BOOLEAN NOT NULL DEFAULT FALSE
-);
 
 -- Table: experiment_devices
 

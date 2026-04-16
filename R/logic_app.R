@@ -25,7 +25,8 @@ get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
       status = case_when(
         archived ~ "finished",
         recording ~ "recording",
-        TRUE ~ "not recording"
+        current_segment > 0 ~ "paused",
+        TRUE ~ "new"
       ),
       category = case_when(
         user_id == !!user_id & archived ~ "Your finished experiments",
@@ -60,7 +61,8 @@ get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
 # get experiemnt devices for table in app
 get_experiment_devices_for_table_in_app <- function(
   experiment_devices,
-  timezone
+  timezone,
+  user_id
 ) {
   experiment_devices |>
     mutate(
@@ -68,11 +70,25 @@ get_experiment_devices_for_table_in_app <- function(
         lubridate::with_tz(timezone) |>
         format("%b %d %Y %H:%M:%S")
     ) |>
-    mutate(version = sddsParticle:::version_value_to_text(.data$version)) |>
+    simplify_owner(user_id = user_id) |>
+    mutate(
+      version = sddsParticle:::version_value_to_text(.data$version),
+      name = case_when(
+        is.na(control_exp_id) ~ "Not in use",
+        control_exp_id == exp_id ~ "This experiment",
+        TRUE ~ name
+      ),
+      owner = case_when(
+        is_na(control_exp_id) ~ "None",
+        TRUE ~ owner
+      )
+    ) |>
     select(
       "core_id",
-      Name = "name",
-      Label = "label",
+      Device = "core_name",
+      "Custom label" = "label",
+      "Current experiment" = "name",
+      "Current controller" = "owner",
       Type = "type",
       Version = "version",
       `Last heard from` = "last_heard",
