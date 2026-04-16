@@ -19,10 +19,40 @@ use_app_utils <- function() {
     "
     )) |>
       singleton(),
+    # action buttons a links
+    tags$style(HTML(
+      "
+      .btn-link {
+        padding: 0;
+        border: none;
+        background: none;
+        color: #0088cc;
+        text-decoration: none;
+      }
+
+      .btn-link:hover {
+        color: #005580;
+        background: none;      /* remove gray hover */
+        text-decoration: none;
+      }
+
+      .btn-link:focus,
+      .btn-link:active {
+        background: none;
+        box-shadow: none;
+      }
+
+      .btn-link:disabled {
+        color: #999999;
+        text-decoration: none;
+      }
+    "
+    )),
+
     # for inputs with save divs
     tags$style(HTML(
       "
-          .input-with-save {
+      .input-with-save {
         position: relative;
         display: inline-block;
         width: 100%;

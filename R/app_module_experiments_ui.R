@@ -117,25 +117,82 @@ generate_experiment_configuration_ui <- function(
       actionLink(ns("exp_name_save"), "Save", icon = icon("floppy-disk"))
     ),
     h4("Devices:"),
-    # actionButton(
-    #   ns("add_experiment_devices"),
-    #   "Link devices",
-    #   icon = icon("plus"),
-    #   style = "border: 0;"
-    # ) |>
-    #   add_tooltip(
-    #     "Link devices to this experiment."
-    #   ),
-    # spaces(1),
     actionButton(
       ns("refresh_experiment_devices"),
       "Refresh",
       icon = icon("arrows-rotate"),
-      style = "border: 0;"
-    ),
+      class = "btn-link"
+    ) |>
+      add_tooltip(
+        "Fetch the latest updates on the linked devices from the cloud."
+      ),
+    spaces(2),
+    if (!exp$archived) {
+      actionButton(
+        ns("link_device"),
+        "Link device",
+        icon = icon("plus"),
+        class = "btn-link"
+      ) |>
+        shinyjs::disabled() |>
+        add_tooltip(
+          "Link a(nother) device to this experiment. You cannot do this while the experiment is recording."
+        )
+    },
+    if (!exp$archived) {
+      spaces(2)
+    },
+    actionButton(
+      ns("change_label"),
+      "Change label",
+      icon = icon("pen-to-square"),
+      class = "btn-link"
+    ) |>
+      shinyjs::disabled() |>
+      add_tooltip(
+        "Change the label of the device for data display purposes (does not affect data collection in any way and can be changed at any time)."
+      ),
+    spaces(2),
+    if (!exp$archived) {
+      actionButton(
+        ns("claim_device"),
+        "Claim device",
+        icon = icon("flag"),
+        class = "btn-link"
+      ) |>
+        shinyjs::disabled() |>
+        add_tooltip(
+          "Claim this device for your experiment (others will not be able to control it). You cannot do this while the experiment is recording."
+        )
+    },
+    if (!exp$archived) {
+      spaces(2)
+    },
+    if (!exp$archived) {
+      actionButton(
+        ns("release_device"),
+        "Release device",
+        icon = icon("dove"),
+        class = "btn-link"
+      ) |>
+        shinyjs::disabled() |>
+        add_tooltip(
+          "Make this device available for others to use. You cannot do this while the experiment is recording."
+        )
+    },
     module_selector_table_ui(ns("experiment_devices")),
-    h4("Description:"),
+    div_input_with_save(
+      id = ns("device_label_div"),
+      textInput(
+        ns("device_label"),
+        NULL,
+        placeholder = "Give this device a custom label for data visualization purposes"
+      ),
+      actionLink(ns("device_label_save"), "Save", icon = icon("floppy-disk"))
+    ) |>
+      shinyjs::hidden(),
 
+    h4("Description:"),
     div_input_with_save(
       textAreaInput(
         ns("exp_desc"),
@@ -167,7 +224,9 @@ generate_experiment_configuration_ui <- function(
 generate_experiment_device_control_ui <- function(ns) {
   tabPanel(
     value = "device_ctrl",
-    title = "Device Control"
+    title = "Device Control",
+    br(),
+    sddsParticle::sdds_ui("sdds", device_list_title = "Devices")
   )
 }
 

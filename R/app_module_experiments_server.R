@@ -3,13 +3,7 @@ experiments_server <- function(
   id,
   data,
   particle,
-  experiment_core_ids,
-  get_timezone,
-  get_user_id,
-  get_user_first_name,
-  get_user_last_name,
-  get_group,
-  is_admin
+  get_timezone
 ) {
   # actual module server
   moduleServer(id, function(input, output, session) {
@@ -27,11 +21,6 @@ experiments_server <- function(
       current_exp_owner = FALSE
     )
 
-    # general ownership info
-    is_owner_or_admin <- reactive({
-      identical(values$current_exp_owner, TRUE) || is_admin()
-    })
-
     # experiment selection =============
 
     ## refresh
@@ -48,7 +37,7 @@ experiments_server <- function(
       out <- data$get_experiments() |>
         get_experiments_for_table_in_app(
           timezone = get_timezone(),
-          user_id = get_user_id()
+          user_id = data$get_user_id()
         ) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
@@ -104,12 +93,33 @@ experiments_server <- function(
       values$new_exp_id <- NULL
     })
 
+    ## change group
+    observeEvent(data$get_group(), {
+      # unselect experiments
+      if (experiments$table_exists()) {
+        experiments$select_rows(c())
+      }
+    })
+
     ## show/load/hide experiment box (controls order of operations with priority)
     observe(
-      if (!data$has_exp_loaded()) shinyjs::hide("experiment_box"),
+      {
+        if (!data$has_exp_loaded()) shinyjs::hide("experiment_box")
+      },
       priority = 100
     )
-    observe(data$load_exp(experiments$get_selected_ids()[1]), priority = 50)
+    observe(
+      {
+        data$load_exp(experiments$get_selected_ids()[1])
+        if (
+          isolate(data$has_exp_loaded()) &&
+            isolate(values$experiment_tab) == "device_ctrl"
+        ) {
+          isolate(data$get_exp_devices())
+        }
+      },
+      priority = 50
+    )
     observe(
       if (data$has_exp_loaded()) shinyjs::show("experiment_box"),
       priority = -100
@@ -142,6 +152,9 @@ experiments_server <- function(
     ## update experiment tab
     observeEvent(input$tabset, {
       values$experiment_tab <- input$tabset
+      if (values$experiment_tab == "device_ctrl") {
+        data$get_exp_devices()
+      }
     })
 
     ## save name
@@ -187,7 +200,7 @@ experiments_server <- function(
       out <- data$get_exp_devices() |>
         get_experiment_devices_for_table_in_app(
           timezone = get_timezone(),
-          user_id = get_user_id()
+          user_id = data$get_user_id()
         ) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
@@ -199,8 +212,8 @@ experiments_server <- function(
       module_selector_table_server,
       "experiment_devices",
       get_data = get_experiment_devices_for_table,
-      id_column = "row_id",
-      # make row_id column invisible
+      id_column = "core_id",
+      # make id column invisible
       columnDefs = list(
         list(visible = FALSE, targets = 0)
       ),
@@ -218,6 +231,66 @@ experiments_server <- function(
       data$refresh_exp_devices()
     })
 
+    ## button availability
+    observeEvent(
+      experiment_devices$get_selected_ids(),
+      {
+        # load the experiment device
+        data$load_exp_device(experiment_devices$get_selected_ids())
+
+        # disable if nothing is loaded
+        if (!data$has_exp_loaded()) {
+          shinyjs::disable("link_device")
+          shinyjs::disable("claim_device")
+          shinyjs::disable("release_device")
+          shinyjs::hide("device_label_div")
+          return()
+        }
+
+        # label input
+        exp_device_selected <- !is_empty(experiment_devices$get_selected_ids())
+        if (data$has_exp_devices_selected()) {
+          updateTextInput(
+            inputId = "device_label",
+            value = data$get_selected_exp_device()$label
+          )
+          shinyjs::show("device_label_div")
+        } else {
+          shinyjs::hide("device_label_div")
+        }
+
+        # claim/release device
+        if (!data$has_exp_devices_selected() || data$is_exp_recording()) {
+          shinyjs::disable("claim_device")
+          shinyjs::disable("release_device")
+          return()
+        }
+        control_exp_id <- data$get_selected_exp_device()$control_exp_id
+        shinyjs::toggleState("claim_device", condition = is.na(control_exp_id))
+        shinyjs::toggleState(
+          "release_device",
+          condition = !is.na(control_exp_id) &&
+            data$get_current_exp()$exp_id == control_exp_id
+        )
+      },
+      ignoreNULL = FALSE
+    )
+
+    ## update label
+    observeEvent(input$device_label_save, {
+      data$save_exp_device_label(input$device_label)
+    })
+
+    ## claim device
+    observeEvent(input$claim_device, {
+      data$claim_device()
+    })
+
+    ## free device
+    observeEvent(input$release_device, {
+      data$release_device()
+    })
+
     # devices ========
 
     # ## get avilable devices for table
@@ -228,7 +301,7 @@ experiments_server <- function(
     #   out <- data$get_registered_devices() |>
     #     get_devices_for_table_in_app(
     #       timezone = get_timezone(),
-    #       user_id = get_user_id()
+    #       user_id = data$get_user_id()
     #     ) |>
     #     try_catch_cnds()
     #   out |> log_cnds(ns = ns)
@@ -292,7 +365,7 @@ experiments_server <- function(
     #   }
     #   device <- get_devices() |>
     #     filter(core_id == newly_selected) |>
-    #     simplify_owner(user_id = get_user_id())
+    #     simplify_owner(user_id = data$get_user_id())
     #   if (!is.na(device$exp_id)) {
     #     log_warning(
     #       ns = ns,

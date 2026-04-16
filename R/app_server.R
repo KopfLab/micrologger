@@ -9,7 +9,7 @@ ml_server <- function(
   # server function
   function(input, output, session) {
     # accessible core ids
-    experiment_core_ids <- reactiveVal()
+    experiment_core_ids <- reactiveVal(value = character())
 
     # particle module
 
@@ -55,27 +55,7 @@ ml_server <- function(
       "experiments",
       data = data,
       particle = particle,
-      experiment_core_ids = experiment_core_ids,
-      get_timezone = reactive(input$timezone),
-      get_user_id = reactive({
-        user_id
-      }),
-      get_user_first_name = reactive({
-        user_first_name
-      }),
-      get_user_last_name = reactive({
-        user_last_name
-      }),
-      get_group = reactive({
-        if (!is.null(input$group)) {
-          input$group
-        } else {
-          user_group
-        }
-      }),
-      is_admin = reactive({
-        user_is_admin
-      })
+      get_timezone = reactive(input$timezone)
     )
 
     # dev mode

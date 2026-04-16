@@ -155,7 +155,6 @@ ml_get_experiment_devices <- function(
     left_join(tbl(con, "devices"), by = "core_id") |>
     left_join(
       tbl(con, "experiments") |>
-        dplyr::filter(!archived) |>
         dplyr::select(
           "control_exp_id" = "exp_id",
           "name",

@@ -24,13 +24,11 @@ data_server <- function(
       current_exp = NULL,
       current_exp_owner = FALSE,
       refresh_exp_devices = 0,
-      current_exp_devices = NULL
+      current_exp_devices = NULL,
+      has_exp_device_selected = FALSE,
+      selected_exp_device_core_id = NULL,
+      selected_exp_device = NULL
     )
-
-    # change group ====
-    observeEvent(get_group(), {
-      refresh_exps()
-    })
 
     # EXPERIMENTS =======
 
@@ -58,6 +56,8 @@ data_server <- function(
       values$has_any_exps <- FALSE
       values$has_exp_loaded <- FALSE
       values$current_exp_id <- NULL
+      values$has_exp_device_selected <- FALSE
+      values$selected_exp_device_core_id <- NULL
       particle$refresh_devices()
     }
 
@@ -107,6 +107,11 @@ data_server <- function(
     # check if current exp is owned by user or user is an admin
     is_owner_or_admin <- reactive({
       identical(values$current_exp_owner, TRUE) || is_admin()
+    })
+
+    # check if exp is recording
+    is_exp_recording <- reactive({
+      has_exp_loaded() && identical(values$current_exp$recording, TRUE)
     })
 
     ## save experiment ========
@@ -179,6 +184,8 @@ data_server <- function(
     ## refresh experiment devices ======
     refresh_exp_devices <- function() {
       values$refresh_exp_devices <- values$refresh_exp_devices + 1L
+      values$has_exp_device_selected <- FALSE
+      values$selected_exp_device_core_id <- NULL
       particle$refresh_devices()
     }
 
@@ -198,8 +205,87 @@ data_server <- function(
         left_join(all_devices, by = c("core_id" = "coreid")) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
+      # tell sdds which core ids are accessible
+      if (!is.null(out$result)) {
+        out$result |>
+          filter(control_exp_id == values$current_exp_id) |>
+          pull(core_id) |>
+          experiment_core_ids()
+      } else {
+        experiment_core_ids(c())
+      }
       return(out$result)
     })
+
+    ## load experiment device ========
+
+    load_exp_device <- function(core_id) {
+      if (is_empty(core_id)) {
+        values$has_exp_device_selected <- FALSE
+        values$selected_exp_device_core_id <- NULL
+      } else {
+        values$has_exp_device_selected <- TRUE
+        values$selected_exp_device_core_id <- core_id
+        values$selected_exp_device <- get_exp_devices() |>
+          filter(core_id == !!core_id)
+      }
+    }
+
+    ## save experiment device label =======
+    save_exp_device_label <- function(label) {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+      }
+      out <- ml_link_devices_to_experiment(
+        exp_id = values$current_exp_id,
+        core_ids = values$selected_exp_device_core_id,
+        label = label
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (out$result == 1) {
+        log_success(ns = ns, user_msg = "Device label updated.")
+        refresh_exp_devices()
+      }
+    }
+
+    ## claim core id for expeirment
+    claim_device <- function() {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+      }
+      out <- ml_claim_device_for_experiment(
+        exp_id = values$current_exp_id,
+        core_id = values$selected_exp_device_core_id
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (identical(out$result, TRUE)) {
+        log_success(ns = ns, user_msg = "Device claimed.")
+        refresh_exp_devices()
+      } else {
+        log_success(ns = ns, user_msg = "Device could not be claimed.")
+      }
+    }
+
+    ## free core id from experiment
+    release_device <- function() {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+      }
+      out <- ml_release_device_from_experiment(
+        exp_id = values$current_exp_id,
+        core_id = values$selected_exp_device_core_id
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (identical(out$result, TRUE)) {
+        log_success(ns = ns, user_msg = "Device released.")
+        refresh_exp_devices()
+      } else {
+        log_success(ns = ns, user_msg = "Device could not be released.")
+      }
+    }
 
     # REGISTERED DEVICES ========
 
@@ -222,6 +308,9 @@ data_server <- function(
 
     # RETURN ====
     list(
+      ## admin
+      get_user_id = get_user_id,
+      get_group = get_group,
       ## experiments =======
       get_experiments = get_experiments,
       refresh_exps = refresh_exps,
@@ -233,12 +322,24 @@ data_server <- function(
         values$current_exp
       }),
       is_owner_or_admin = is_owner_or_admin,
+      is_exp_recording = is_exp_recording,
       start_exp_recording = start_exp_recording,
       stop_exp_recording = stop_exp_recording,
       archive_exp = archive_exp,
-      ## devices =====
+      ## exp devices =====
       refresh_exp_devices = refresh_exp_devices,
       get_exp_devices = get_exp_devices,
+      load_exp_device = load_exp_device,
+      has_exp_devices_selected = reactive({
+        values$has_exp_device_selected
+      }),
+      get_selected_exp_device = reactive({
+        values$selected_exp_device
+      }),
+      save_exp_device_label = save_exp_device_label,
+      claim_device = claim_device,
+      release_device = release_device,
+      ## registered devices ====
       get_registered_devices = get_registered_devices
     )
   })
