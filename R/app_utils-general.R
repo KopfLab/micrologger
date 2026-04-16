@@ -6,8 +6,10 @@ use_app_utils <- function() {
   tagList(
     tags$style(HTML(
       ".shiny-output-error-validation { color: #b30000; font-size: 150%;}"
-    )),
-    tags$style(HTML(paste(format(cli::ansi_html_style()), collapse = "\n"))),
+    )) |>
+      singleton(),
+    tags$style(HTML(paste(format(cli::ansi_html_style()), collapse = "\n"))) |>
+      singleton(),
     tags$style(HTML(
       "
       .cli-inline-error {
@@ -15,6 +17,62 @@ use_app_utils <- function() {
         white-space: pre-wrap;
       }
     "
+    )) |>
+      singleton(),
+    # for inputs with save divs
+    tags$style(HTML(
+      "
+          .input-with-save {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+      }
+
+      .input-with-save:not(:has(textarea)) {
+        height: 34px;
+      }
+
+      .input-with-save input,
+      .input-with-save textarea {
+        width: 100%;
+        height: 34px;
+        padding: 6px 36px 6px 12px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+
+      .input-with-save textarea {
+        height: auto;
+      }
+
+      .input-with-save > a {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        line-height: 1;
+      }
+
+      .input-with-save:has(textarea) > a {
+        top: 8px;
+        transform: none;
+      }
+
+      .input-with-save > a svg {
+        fill: #000;
+        transition: fill 0.15s ease, transform 0.15s ease;
+      }
+
+      .input-with-save > a:hover svg {
+        fill: #aaa;
+        transform: scale(1.2);
+      }
+
+      .input-with-save > a:focus {
+        outline: none;
+      }"
     )) |>
       singleton()
   )
@@ -204,6 +262,10 @@ log_debug <- function(..., ns = NULL) {
 }
 
 # ui elements ======
+
+div_input_with_save <- function(...) {
+  tags$div(class = "input-with-save", ...)
+}
 
 # convenience function for adding spaces (not the most elegant way but works)
 spaces <- function(n) {

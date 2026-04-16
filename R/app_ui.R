@@ -40,6 +40,7 @@ ml_ui <- function(timezone, user, groups) {
         disable = FALSE,
         width = app_title_width,
         sddsParticle::sdds_header(),
+        use_app_utils(),
         tags$head(
           # css headers
           tags$style(

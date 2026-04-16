@@ -191,7 +191,12 @@ ml_experiment_start_recording <- function(exp_id, con = db()) {
     to_sql(exp_id)
   )
   result <- sql |> run_sql(con)
-  return(invisible(result))
+  if (result == 0) {
+    cli_alert_warning("Something went wrong, no experiment was affected.")
+    return(FALSE)
+  }
+  cli_alert_success("Experiment is recording.")
+  return(TRUE)
 }
 
 #' @export
@@ -217,5 +222,46 @@ ml_experiment_stop_recording <- function(exp_id, con = db()) {
     to_sql(exp_id)
   )
   result <- sql |> run_sql(con)
-  return(invisible(result))
+  if (result == 0) {
+    cli_alert_warning("Something went wrong, no experiment was affected.")
+    return(FALSE)
+  }
+  cli_alert_success("Experiment recording paused.")
+  return(TRUE)
+}
+
+#' @export
+ml_archive_experiment <- function(exp_id, con = db()) {
+  # safety checks
+  exp_id |>
+    check_arg(
+      !missing(exp_id) && is_scalar_integerish(exp_id),
+      "must be a single exp_id"
+    )
+
+  # finishing
+  cli_alert_info(
+    "Archiving {.field experiment} {col_magenta(exp_id)} and releasing all its devices (if any)."
+  )
+
+  # release devices
+  sql <- sprintf(
+    "UPDATE devices SET control_exp_id = NULL WHERE control_exp_id = %s",
+    to_sql(exp_id)
+  )
+  result <- sql |> run_sql(con)
+  cli_alert_info("{result} devices{?s} were released.")
+
+  # archive experiment
+  sql <- sprintf(
+    "UPDATE experiments SET archived = TRUE WHERE exp_id = %s",
+    to_sql(exp_id)
+  )
+  result <- sql |> run_sql(con)
+  if (result == 0) {
+    cli_alert_warning("Something went wrong, no experiment was affected.")
+    return(FALSE)
+  }
+  cli_alert_success("Experiment archived.")
+  return(TRUE)
 }
