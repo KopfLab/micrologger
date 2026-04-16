@@ -64,8 +64,9 @@ module_selector_table_server <- function(
     selected_ids = c(),
     selected_cells = c(), # only matters if in 'cell' selection mode
     update_selected = if (auto_reselect) -1L else 0L, # trigger selection update (circumventing circular triggers with user selection)
-    rendering = TRUE,
-    table_complete = 0,
+    rendering = TRUE, # whether the table is currently rendering
+    table_exists = FALSE, # whether the table exists or not
+    table_reloaded = 0L, # whether the table has re-loaded completely
     visible_cols = visible_columns,
     page_length = initial_page_length, # selected page length
     display_start = 0, # which display page to start on
@@ -80,7 +81,6 @@ module_selector_table_server <- function(
   get_table_df <- reactive({
     req(get_data())
     validate(need(has_data(), no_data_message))
-    log_debug(ns = ns, "loading table data frame")
     # get the table
     df <-
       tryCatch(
@@ -101,10 +101,6 @@ module_selector_table_server <- function(
           # select the transmuted cols to begin with
           if (length(values$visible_cols) == 0) {
             values$visible_cols <- seq_along(names(df))
-            log_debug(
-              ns = ns,
-              "no visible columns selected, select all in available columns"
-            )
           }
 
           return(df)
@@ -157,7 +153,11 @@ module_selector_table_server <- function(
       get_table_df_visible_cols()
       values$filter
       # info
-      log_info(ns = ns, "rendering selection table", user_msg = "Loading table")
+      log_info(
+        ns = ns,
+        "(re-) rendering selection table",
+        user_msg = "Loading table"
+      )
       # get the table
       table <-
         tryCatch(
@@ -310,10 +310,6 @@ module_selector_table_server <- function(
       # wrap up
       validate(need(table, "Data table couldn't be created"))
       isolate({
-        # make sure selection stays the same
-        if (auto_reselect) {
-          update_selected()
-        }
         # keep track of rendering
         if (!values$rendering) {
           values$rendering <- TRUE
@@ -379,9 +375,11 @@ module_selector_table_server <- function(
   observeEvent(
     input$selection_table_rows_selected,
     {
-      # this triggers when the table first loads too and then for each user selection
+      req(table_exists())
       req(has_data())
-      req(values$all_ids)
+      req(get_all_ids())
+      # don't trigger while we're first rendering
+      req(!values$rendering)
       # avoid circular trigger iwth update_selected = FALSE
       select_rows(
         indices = input$selection_table_rows_selected,
@@ -413,16 +411,6 @@ module_selector_table_server <- function(
     if (!identical(ids, values$selected_ids)) {
       # there were actual changes
       values$selected_ids <- ids
-      if (length(ids) > 0L) {
-        log_debug(
-          ns = ns,
-          "saving row selections: ",
-          sprintf("#%d = '%s'", get_index_from_id(ids), ids) |>
-            paste0(collapse = ", ")
-        )
-      } else {
-        log_debug(ns = ns, "saving row selections: nothing")
-      }
     }
     if (update_selected) update_selected()
   }
@@ -431,6 +419,7 @@ module_selector_table_server <- function(
   observeEvent(
     input$selection_table_cells_selected,
     {
+      req(table_exists())
       req(has_data())
       req(values$all_ids)
       if (
@@ -495,7 +484,8 @@ module_selector_table_server <- function(
     values$update_selected,
     {
       if (values$update_selected > 0) {
-        log_debug(ns = ns, "updating selections in selection table")
+        sprintf("(re-) selecting %d rows", length(values$selected_ids)) |>
+          log_debug(ns = ns)
         proxy <- DT::dataTableProxy("selection_table")
         DT::selectRows(proxy, get_index_from_id(values$selected_ids))
       }
@@ -582,11 +572,22 @@ module_selector_table_server <- function(
 
   # save state
   observeEvent(input$selection_table_state, {
-    log_debug(ns = ns, "saving state of selection table")
     if (values$rendering) {
-      log_success(ns = ns, "selector table rendered", user_msg = "Complete")
-      values$table_complete <- values$table_complete + 1L
+      if (!values$table_exists) {
+        values$table_exists <- TRUE
+      }
+      values$table_reloaded <- values$table_reloaded + 1L
       values$rendering <- FALSE
+      # now that the renderin is done, revisit the selection
+      if (auto_reselect) {
+        # make sure selection stays the same
+        update_selected()
+      } else {
+        # no selection
+        if (length(values$selected_ids) > 0) {
+          values$selected_ids <- c()
+        }
+      }
     }
     values$page_length <- input$selection_table_state$length
     values$display_start <- input$selection_table_state$start
@@ -596,61 +597,138 @@ module_selector_table_server <- function(
     #values$columns <- input$selection_table_state$columns
   })
 
+  table_exists <- reactive(values$table_exists)
+  is_table_reloaded <- reactive({
+    req(table_exists())
+    values$table_reloaded
+  })
+
   # retrieve data ======
+  get_all_ids <- reactive({
+    req(table_exists())
+    values$all_ids
+  })
+
   has_data <- reactive({
     return(!is.null(get_data()) && nrow(get_data()) > 0L)
   })
 
+  external_has_data <- reactive({
+    req(table_exists())
+    has_data()
+  })
+
   get_selected_ids <- reactive({
+    req(table_exists())
     return(values$selected_ids)
   })
 
   get_selected_cells <- reactive({
+    req(table_exists())
     return(values$selected_cells)
   })
 
   get_selected_items <- reactive({
     # get the actual table items that are selected
+    req(table_exists())
     return(get_data()[get_index_from_id(values$selected_ids), ])
   })
 
   # enable buttons =====
   observe({
+    req(table_exists())
     toggle <- has_data() & length(input$selection_table_rows_all) > 0
     if (isolate(!is.null(input$select_all))) {
       shinyjs::toggleState("select_all", condition = toggle)
     }
   })
   observe({
+    req(table_exists())
     toggle <- has_data()
     if (isolate(!is.null(input$deselect_all))) {
       shinyjs::toggleState("deselect_all", condition = toggle)
     }
   })
   observe({
+    req(table_exists())
     toggle <- has_data() & length(input$visible_cols) > 0
     if (isolate(!is.null(input$apply_cols))) {
       shinyjs::toggleState("apply_cols", condition = toggle)
     }
   })
 
+  # reactive trigger messsages ====
+
+  # table_exists()
+  observe({
+    req(table_exists())
+    log_debug(ns = ns, "table_exists() is now TRUE")
+  })
+
+  # has_data()
+  observe({
+    log_debug(ns = ns, "has_data() is now ", external_has_data())
+  })
+
+  # is_table_reloaded()
+  observe({
+    n <- is_table_reloaded()
+    log_success(
+      ns = ns,
+      "is_table_reloaded() now returns ",
+      n,
+      user_msg = "Complete"
+    )
+  })
+
+  # get_all_ids()
+  observe({
+    all_ids <- get_all_ids()
+    if (is_empty(all_ids)) {
+      log_debug(ns = ns, "get_all_ids() now returns an empty vector")
+    } else {
+      log_debug(
+        ns = ns,
+        "get_all_ids() now returns ",
+        length(all_ids),
+        " values"
+      )
+    }
+  })
+
+  # get_selected_ids()
+  observe({
+    ids <- get_selected_ids()
+    if (is_empty(ids)) {
+      log_debug(ns = ns, "get_selected_ids() now returns an empty vector")
+    } else {
+      log_debug(
+        ns = ns,
+        "get_selected_ids() now returns ",
+        length(ids),
+        " values: ",
+        sprintf("#%d = '%s'", get_index_from_id(ids), ids) |>
+          paste0(collapse = ", ")
+      )
+    }
+  })
+
   # return functions =====
   list(
-    select_rows = select_rows,
-    has_data = has_data,
-    get_all_ids = reactive({
-      values$all_ids
-    }),
+    # information functions
+    table_exists = table_exists,
+    is_table_reloaded = is_table_reloaded,
+    has_data = external_has_data,
+    get_all_ids = get_all_ids,
     get_selected_ids = get_selected_ids,
     get_selected_cells = get_selected_cells,
     get_selected_items = get_selected_items,
+    # action functions
+    select_rows = select_rows,
     set_visible_columns = set_visible_columns,
     reset_visible_columns = reset_visible_columns,
     change_formatting_calls = change_formatting_calls,
-    update_options = update_options,
-    table_complete = reactive({
-      values$table_complete
-    })
+    update_options = update_options
   )
 }
 
