@@ -57,73 +57,76 @@ experiments_ui <- function(id) {
 
 generate_experiment_configuration_ui <- function(
   ns,
-  owner,
-  archived,
-  recording,
-  exp_name,
-  exp_desc,
-  exp_notes
+  exp
 ) {
   # configuration =====
   tabPanel(
     value = "configuration",
     title = "Configuration",
 
-    h4("Owner:", owner),
+    h4("Owner:", exp$owner),
     h4(
       "Status:",
-      if (archived) {
+      if (exp$archived) {
         "finished"
-      } else if (recording) {
+      } else if (exp$recording) {
         "recording"
       } else {
         "not recording"
       }
     ),
-    if (!archived && !recording) {
+    if (!exp$archived && !exp$recording) {
       actionButton(
         ns("start_recording"),
-        label = "Start Recording",
+        label = if (exp$current_segment > 0) {
+          "Resume recording"
+        } else {
+          "Start recording"
+        },
         icon = icon("play"),
         style = "color: #fff; background-color: #007f1f; border-color: #2e6da4"
       )
-    } else if (!archived && recording) {
+    } else if (!exp$archived && exp$recording) {
       actionButton(
         ns("stop_recording"),
-        label = "Stop Recording",
+        label = "Pause recording",
         icon = icon("stop"),
         style = "color: #fff; background-color: #f22e10; border-color: #2e6da4"
       )
     },
-    if (!archived) spaces(1),
-    if (!archived) {
+    if (!exp$archived) spaces(1),
+    if (!exp$archived && !exp$recording && exp$current_segment > 0) {
       actionButton(
-        ns("finish"),
-        label = "Finish Experiment",
+        ns("archive"),
+        label = "Finish experiment",
         icon = icon("check-double")
       ) |>
         add_tooltip(
-          "Finish the experiment. Frees up the devices used by this experiment. You will not be able to record more data with this experiment."
+          "Finish the experiment. Frees up the devices used by this experiment. You will not be able to record more data with this experiment but will still have access to all the data."
         )
     },
+
     h4("Experiment:"),
-    textInput(
-      ns("exp_name"),
-      NULL,
-      value = if (!is.na(exp_name)) exp_name else "",
-      placeholder = "Name your experiment"
+    div_input_with_save(
+      textInput(
+        ns("exp_name"),
+        NULL,
+        value = if (!is.na(exp$name)) exp$name else "",
+        placeholder = "Name your experiment"
+      ),
+      actionLink(ns("exp_name_save"), "Save", icon = icon("floppy-disk"))
     ),
     h4("Devices:"),
-    actionButton(
-      ns("add_experiment_devices"),
-      "Link devices",
-      icon = icon("plus"),
-      style = "border: 0;"
-    ) |>
-      add_tooltip(
-        "Link devices to this experiment."
-      ),
-    spaces(1),
+    # actionButton(
+    #   ns("add_experiment_devices"),
+    #   "Link devices",
+    #   icon = icon("plus"),
+    #   style = "border: 0;"
+    # ) |>
+    #   add_tooltip(
+    #     "Link devices to this experiment."
+    #   ),
+    # spaces(1),
     actionButton(
       ns("refresh_experiment_devices"),
       "Refresh",
@@ -132,29 +135,31 @@ generate_experiment_configuration_ui <- function(
     ),
     module_selector_table_ui(ns("experiment_devices")),
     h4("Description:"),
-    textAreaInput(
-      ns("exp_desc"),
-      NULL,
-      value = if (!is.na(exp_desc)) exp_desc else "",
-      placeholder = "Add a succinct description for your experiment",
-      cols = 50,
-      rows = 5,
-      resize = "none"
+
+    div_input_with_save(
+      textAreaInput(
+        ns("exp_desc"),
+        NULL,
+        value = if (!is.na(exp$description)) exp$description else "",
+        placeholder = "Add a succinct description for your experiment",
+        cols = 50,
+        rows = 5,
+        resize = "none"
+      ),
+      actionLink(ns("exp_desc_save"), "Save", icon = icon("floppy-disk"))
     ),
     h4("Notes:"),
-    textAreaInput(
-      ns("exp_notes"),
-      NULL,
-      value = if (!is.na(exp_notes)) exp_notes else "",
-      placeholder = "Keep notes about your experiment",
-      width = "100%",
-      rows = 10,
-      resize = "both"
-    ),
-    actionButton(
-      ns("save_info"),
-      label = "Save",
-      icon = icon("save")
+    div_input_with_save(
+      textAreaInput(
+        ns("exp_notes"),
+        NULL,
+        value = if (!is.na(exp$notes)) exp$notes else "",
+        placeholder = "Keep notes about your experiment",
+        width = "100%",
+        rows = 10,
+        resize = "both"
+      ),
+      actionLink(ns("exp_notes_save"), "Save", icon = icon("floppy-disk"))
     )
   )
 }

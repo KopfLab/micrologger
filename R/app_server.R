@@ -23,9 +23,37 @@ ml_server <- function(
       accessible_core_ids = experiment_core_ids
     )
 
+    # data module
+    data <- data_server(
+      "data",
+      particle = particle,
+      experiment_core_ids = experiment_core_ids,
+      get_timezone = reactive(input$timezone),
+      get_user_id = reactive({
+        user_id
+      }),
+      get_user_first_name = reactive({
+        user_first_name
+      }),
+      get_user_last_name = reactive({
+        user_last_name
+      }),
+      get_group = reactive({
+        if (!is.null(input$group)) {
+          input$group
+        } else {
+          user_group
+        }
+      }),
+      is_admin = reactive({
+        user_is_admin
+      })
+    )
+
     # experiments module
     experiments <- experiments_server(
       "experiments",
+      data = data,
       particle = particle,
       experiment_core_ids = experiment_core_ids,
       get_timezone = reactive(input$timezone),
