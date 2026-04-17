@@ -31,6 +31,7 @@ CREATE TABLE experiments
   notes TEXT,
   recording BOOLEAN NOT NULL DEFAULT FALSE,
   current_segment INTEGER NOT NULL DEFAULT 0,
+  first_recording_start TIMESTAMP WITH TIME ZONE,
   last_recording_change TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   archived BOOLEAN NOT NULL DEFAULT FALSE
 );
@@ -81,6 +82,7 @@ DROP TABLE IF EXISTS device_snapshots CASCADE;
 CREATE TABLE device_snapshots (
   snapshot_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   core_id TEXT NOT NULL REFERENCES devices(core_id),
+  core_name TEXT,
   snapshot_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
   snapshot_json TEXT
 );

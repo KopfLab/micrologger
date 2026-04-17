@@ -270,10 +270,15 @@ def process_state(cursor, core_id, payload):
     try:
         cursor.execute(
             """
-            INSERT INTO device_snapshots (core_id, snapshot_datetime, snapshot_json)
-            VALUES (%s, %s, %s)
+            INSERT INTO device_snapshots (core_id, core_name, snapshot_datetime, snapshot_json)
+            VALUES (%s, %s, %s, %s)
             """,
-            [core_id, payload.get("tb"), json.dumps(payload.get("s"))],
+            [
+                core_id,
+                payload.get("n"),
+                payload.get("tb"),
+                json.dumps(payload.get("s")),
+            ],
         )
         logger.info("created snapshot for device {}".format(core_id))
         return None, None
