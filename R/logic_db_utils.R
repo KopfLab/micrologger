@@ -121,9 +121,37 @@ df_to_insert_sql <- function(df, table) {
   )
 }
 
+# run a dbplyr query
+collect_from_db <- function(df, .env = caller_env(), .retry = TRUE) {
+  result <-
+    tryCatch(
+      df |> collect(),
+      error = function(e) {
+        # retry once in case we have a connection time out
+        if (.retry) {
+          cli_warn("Database query failed, retrying once...")
+          return(df |> collect_from_db(.env = .env, .retry = FALSE))
+        }
+        # query failed
+        cli_abort(
+          c("Failed to fetch data from database"),
+          parent = e,
+          call = .env
+        )
+      }
+    )
+  return(result)
+}
+
 # run sql with error catching
 # @param execute_only - if set, runs DBExecute (return value is number of rows affecgted), if FALSE, runs dbGetQuery and returns whatever the query specifes
-run_sql <- function(sql, con = db(), .env = caller_env(), execute_only = TRUE) {
+run_sql <- function(
+  sql,
+  con = db(),
+  .env = caller_env(),
+  execute_only = TRUE,
+  .retry = TRUE
+) {
   result <-
     tryCatch(
       {
@@ -134,6 +162,18 @@ run_sql <- function(sql, con = db(), .env = caller_env(), execute_only = TRUE) {
         }
       },
       error = function(e) {
+        # retry once in case we have a connection time out
+        if (.retry) {
+          cli_warn("Database query failed, retrying once...")
+          return(run_sql(
+            sql,
+            con = con,
+            .env = .env,
+            execute_only = execute_only,
+            .retry = FALSE
+          ))
+        }
+        # query failed
         cli_abort(
           c("SQL statement failed", "i" = "{sql}"),
           parent = e,
