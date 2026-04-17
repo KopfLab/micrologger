@@ -28,7 +28,7 @@
 - also specifically alow inbound traffic from the Lambda function (port 443):
 - `aws ec2 authorize-security-group-ingress --group-id {{GroupId}} --protocol tcp --port 443 --cidr 172.31.0.0/16`
 - allow admin IP (figure out your IP and replace `{{IP}}` placeholder) to access the DB:
-- `aws ec2 authorize-security-group-ingress --group-id {{GroupId}} --protocol tcp --port 5432 --cidr {{IP>/32`
+- `aws ec2 authorize-security-group-ingress --group-id {{GroupId}} --protocol tcp --port 5432 --cidr {{IP}}/32`
 
 # Database
 
