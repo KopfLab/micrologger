@@ -14,7 +14,7 @@ ml_get_groups <- function(group_id = NULL, con = db()) {
       dplyr::filter(stringr::str_to_upper(group_id) %in% !!group_id)
   }
 
-  df <- df |> collect()
+  df <- df |> collect_from_db()
   cli_alert_success("Found {nrow(df)} group{?s}.")
   return(df)
 }
@@ -60,7 +60,7 @@ ml_get_devices <- function(
     df <- df |> dplyr::filter(!!filter_quo)
   }
 
-  df <- df |> dplyr::select(!!select_quo) |> collect()
+  df <- df |> dplyr::select(!!select_quo) |> collect_from_db()
   cli_alert_success("Found {nrow(df)} device{?s}.")
   return(df)
 }
@@ -98,7 +98,9 @@ ml_get_experiments <- function(
     df <- df |> dplyr::filter(!!filter_quo)
   }
 
-  df <- df |> arrange(desc(recording), desc(last_recording_change)) |> collect()
+  df <- df |>
+    collect_from_db() |>
+    arrange(desc(recording), desc(last_recording_change))
 
   # local TZ conversion
   if (!is.null(convert_to_TZ)) {
@@ -164,26 +166,77 @@ ml_get_experiment_devices <- function(
         ),
       by = "control_exp_id"
     ) |>
-    dplyr::filter(exp_id %in% !!exp_id)
+    dplyr::filter(.data$exp_id %in% !!exp_id)
 
   if (!quo_is_null(filter_quo)) {
     df <- df |> dplyr::filter(!!filter_quo)
   }
 
-  df <- df |> dplyr::select(!!select_quo) |> collect()
+  df <- df |> dplyr::select(!!select_quo) |> collect_from_db()
   cli_alert_success("Found {nrow(df)} experiment device{?s}.")
   return(df)
 }
 
+# get device snapshots linked to devices in a particular time period of an experiment
+ml_get_experiment_devices_snapshots <- function(
+  exp_id,
+  con = db(),
+  parse = TRUE
+) {
+  # safety check
+  exp_id |>
+    check_arg(
+      !missing(exp_id) && is_integerish(exp_id) && length(exp_id) > 0,
+      "must provide at least one experiment id"
+    )
+
+  # query
+  df <-
+    tbl(con, "experiment_devices") |>
+    inner_join(tbl(con, "device_snapshots"), by = "core_id") |>
+    inner_join(tbl(con, "experiments"), by = "exp_id") |>
+    dplyr::filter(
+      .data$exp_id %in% !!exp_id,
+      !is.null(first_recording_start)
+    ) |>
+    dplyr::filter(
+      snapshot_datetime >= first_recording_start &
+        (recording |
+          snapshot_datetime <= last_recording_change)
+    ) |>
+    dplyr::select(
+      "exp_id",
+      "snapshot_id",
+      "core_id",
+      "core_name",
+      "label",
+      "snapshot_datetime",
+      "snapshot_json"
+    )
+
+  df <- df |> collect_from_db()
+  if (parse) {
+    return(df |> ml_parse_experiment_devices_snapshots())
+  }
+  return(df)
+}
+
 #' read data logs
+#' @param parse whether to parse the database logs
+#' @param timezone what timezone to use for parsing
+#' @param experiments tibble with experiment information if this should be merged in
 #' @export
 ml_get_logs <- function(
   exp_id,
   filter = NULL,
   select = everything(),
   max_rows = NULL,
-  convert_to_TZ = Sys.timezone(),
-  con = db()
+  cache = TRUE,
+  include_snapshots = TRUE,
+  con = db(),
+  parse = TRUE,
+  timezone = Sys.timezone(),
+  experiments = NULL
 ) {
   # safety check
   exp_id |>
@@ -194,41 +247,105 @@ ml_get_logs <- function(
   filter_quo <- enquo(filter)
   select_quo <- enquo(select)
 
+  # cache
+  cache_path <- file.path("cache", sprintf("exp%s_logs.rds", exp_id))
+  use_cache <- cache && file.exists(cache_path)
+  logs <- tibble()
+  if (use_cache) {
+    logs <- readr::read_rds(cache_path)
+  }
+  if (nrow(logs) == 0 || !"log_id" %in% names(logs)) {
+    use_cache <- FALSE
+  }
+
   # information
   cli_alert_info(
     c(
-      "Retrieving logs for {qty(length(exp_id))}{.field experiment{?s}} {col_magenta(exp_id)}",
-      "{if(!quo_is_null(filter_quo)) format_inline(' with filter {.code {quo_text(filter_quo)}}')}",
+      "Retrieving logs ",
+      if (include_snapshots) "and snapshots ",
+      "for {qty(length(exp_id))}{.field experiment{?s}} {col_magenta(exp_id)} from ",
+      if (use_cache) "cache ({nrow(logs)} records cached) and from the ",
+      "database",
+      if (!quo_is_null(filter_quo)) {
+        " with filter {.code {quo_text(filter_quo)}}"
+      },
       "..."
     )
   )
 
+  # query
   df <-
     tbl(con, "experiment_logs") |>
     inner_join(tbl(con, "logs"), by = c("log_id")) |>
     left_join(tbl(con, "experiment_devices"), by = c("exp_id", "core_id")) |>
-    dplyr::filter(exp_id %in% !!exp_id) |>
+    dplyr::filter(.data$exp_id %in% !!exp_id) |>
     arrange(log_id)
-
-  if (!quo_is_null(filter_quo)) {
-    df <- df |> dplyr::filter(!!filter_quo)
-  }
 
   if (!is.null(max_rows)) {
     df <- df |> dplyr::filter(row_number() <= !!max_rows)
   }
 
-  df <- df |> dplyr::select(!!select_quo) |> collect()
-  cli_alert_success("Found {nrow(df)} log{?s}.")
-
-  # local TZ conversion
-  if (!is.null(convert_to_TZ) && "log_datetime" %in% names(df)) {
-    cli_alert_info(
-      "Converting {.code log_datetime} to timezone {col_blue(convert_to_TZ)}."
-    )
-    df <- df |>
-      mutate(log_datetime = lubridate::with_tz(log_datetime, convert_to_TZ))
+  if (use_cache) {
+    max_log_id <- max(logs$log_id, na.rm = TRUE)
+    df <- df |> dplyr::filter(log_id > !!max_log_id)
   }
 
-  return(df)
+  df <- df |>
+    dplyr::select(!!select_quo) |>
+    collect_from_db() |>
+    mutate(snapshot_id = NA_integer_, .after = "log_id")
+
+  # post-query processing
+  cli_alert_success(
+    "Received {nrow(df)}{if(use_cache) ' new'} {qty(nrow(df))}log{?s} from the database."
+  )
+  logs <- bind_rows(logs, df)
+  if (cache && nrow(df) > 0) {
+    if (!dir.exists(dirname(cache_path))) {
+      dir.create(dirname(cache_path), recursive = TRUE)
+    }
+    logs |> readr::write_rds(cache_path)
+    cli_alert_info("Caching all {nrow(logs)} records.")
+  }
+
+  # get snapshots only aftewards so we cache just raw logs
+  if (include_snapshots) {
+    snaps <- ml_get_experiment_devices_snapshots(exp_id, con = con)
+    cli_alert_success(
+      "Received {length(unique(snaps$snapshot_id))} device snapshots from the database."
+    )
+    if (nrow(snaps) > 0) {
+      logs <- logs |>
+        bind_rows(
+          snaps |>
+            rename(
+              "log_datetime" = "snapshot_datetime",
+              "data_path" = "path",
+              "data_text" = "v_text",
+              "data_value" = "v_num"
+            ) |>
+            mutate(log_time_offset = 0)
+        )
+    }
+  }
+
+  # apply custom filter only afterwards so we cache all raw logs
+  if (!quo_is_null(filter_quo)) {
+    logs <- logs |> dplyr::filter(!!filter_quo)
+  }
+
+  # parse?
+  if (parse) {
+    logs <- logs |>
+      ml_parse_logs(experiments = experiments, timezone = timezone)
+  }
+
+  return(logs)
+}
+
+# clear cached logs
+ml_clear_logs_cache <- function() {
+  files <- list.files("cache", pattern = "_logs.rds", full.names = TRUE)
+  unlink(files)
+  cli_alert_success("Cleared cached logs from {length(files)} experiment{?s}.")
 }
