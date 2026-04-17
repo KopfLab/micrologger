@@ -106,12 +106,15 @@ ml_experiment_start_recording <- function(exp_id, con = db()) {
   )
 
   # run SQL
+  now_dt <- format(lubridate::now('UTC'))
   sql <- sprintf(
     "UPDATE experiments SET recording = true, 
-    last_recording_change = CASE WHEN recording IS NOT TRUE THEN %s ELSE last_recording_change END, 
+    last_recording_change = CASE WHEN recording IS NOT TRUE THEN TIMESTAMPTZ %s ELSE last_recording_change END, 
+    first_recording_start = CASE WHEN current_segment = 0 THEN TIMESTAMPTZ %s ELSE NULL END,
     current_segment = CASE WHEN recording IS NOT TRUE THEN current_segment + 1 ELSE current_segment END
     WHERE exp_id = %s",
-    to_sql(format(lubridate::now('UTC'))),
+    to_sql(now_dt),
+    to_sql(now_dt),
     to_sql(exp_id)
   )
   result <- sql |> run_sql(con)
