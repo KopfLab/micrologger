@@ -327,7 +327,8 @@ data_server <- function(
         ml_get_logs(
           exp_id = values$current_exp_id,
           experiments = get_experiments() |>
-            select("exp_id", "exp" = "name")
+            select("exp_id", "exp" = "name"),
+          timezone = get_timezone()
         ) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
@@ -346,6 +347,7 @@ data_server <- function(
       ## admin
       get_user_id = get_user_id,
       get_group = get_group,
+      get_timezone = get_timezone,
       ## experiments =======
       get_experiments = get_experiments,
       refresh_exps = refresh_exps,

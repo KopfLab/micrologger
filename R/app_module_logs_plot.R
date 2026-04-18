@@ -12,9 +12,7 @@ logs_plot_server <- function(
     zoom_factor <- 2 # zoom in and out factor with each click
     zoom_move <- 0.5 # sideways move interval
     values <- reactiveValues(
-      valid_fetch = FALSE,
       valid_plot = FALSE,
-      selected_traces = c(),
       refresh_data_plot = NULL,
       zoom_stack = list(list(zoom = NULL, x_min = NULL, x_max = NULL))
     )
@@ -23,7 +21,6 @@ logs_plot_server <- function(
 
     ## fetch data ====
     observeEvent(input$fetch_data, {
-      values$valid_fetch <- TRUE
       data$refresh_logs()
       data$get_logs()
       shinyjs::show("traces_box")
@@ -39,7 +36,6 @@ logs_plot_server <- function(
     ## reset cache ====
 
     observeEvent(input$reset_cache, {
-      values$valid_fetch <- FALSE
       ml_clear_logs_cache()
       log_success(ns = ns, user_msg = "Cache cleared.")
     })
@@ -127,9 +123,9 @@ logs_plot_server <- function(
     observe({
       data$has_exp_loaded()
       data$get_current_exp()
+      data$get_timezone()
       log_debug(ns = ns, "resetting plot")
       isolate({
-        values$valid_fetch <- FALSE
         values$valid_plot <- FALSE
         values$zoom_stack <- list(list(zoom = NULL, x_min = NULL, x_max = NULL))
         refresh_plot()
