@@ -45,8 +45,7 @@ experiments_server <- function(
     })
 
     ## setup experiments selector table
-    experiments <- callModule(
-      module_selector_table_server,
+    experiments <- module_selector_table_server(
       "experiments",
       get_data = get_experiments_for_table,
       id_column = "exp_id",
@@ -80,7 +79,7 @@ experiments_server <- function(
       new_exp_id <- data$add_exp()
       if (!is.null(new_exp_id)) {
         values$new_exp_id <- new_exp_id
-        experiments$select_rows(c())
+        experiments$deselect_all()
         data$refresh_exps()
       }
     })
@@ -97,7 +96,7 @@ experiments_server <- function(
     observeEvent(data$get_group(), {
       # unselect experiments
       if (experiments$table_exists()) {
-        experiments$select_rows(c())
+        experiments$deselect_all()
       }
     })
 
@@ -111,11 +110,12 @@ experiments_server <- function(
     observe(
       {
         data$load_exp(experiments$get_selected_ids()[1])
-        if (
-          isolate(data$has_exp_loaded()) &&
-            isolate(values$experiment_tab) == "device_ctrl"
-        ) {
-          isolate(data$get_exp_devices())
+        if (isolate(data$has_exp_loaded())) {
+          if (isolate(values$experiment_tab) == "device_ctrl") {
+            isolate(data$get_exp_devices())
+          } else if (isolate(values$experiment_tab) == "data") {
+            isolate(data$get_logs())
+          }
         }
       },
       priority = 50
@@ -130,13 +130,18 @@ experiments_server <- function(
       req(data$has_exp_loaded())
       tabsetPanel(
         id = ns("tabset"),
-        type = "tabs",
+        type = "pills",
         selected = if (data$is_owner_or_admin()) {
           isolate(values$experiment_tab)
         } else {
           "data"
         },
-        generate_experiment_data_ui(ns = ns),
+        tabPanel(
+          value = "data",
+          "Data",
+          br(),
+          logs_plot_ui(ns("logs_plot"))
+        ),
         if (data$is_owner_or_admin()) {
           generate_experiment_configuration_ui(
             ns = ns,
@@ -144,7 +149,12 @@ experiments_server <- function(
           )
         },
         if (data$is_owner_or_admin()) {
-          generate_experiment_device_control_ui(ns = ns)
+          tabPanel(
+            value = "device_ctrl",
+            title = "Device Control",
+            br(),
+            sddsParticle::sdds_ui("sdds", device_list_title = "Devices")
+          )
         }
       )
     })
@@ -154,6 +164,8 @@ experiments_server <- function(
       values$experiment_tab <- input$tabset
       if (values$experiment_tab == "device_ctrl") {
         data$get_exp_devices()
+      } else if (values$experiment_tab == "data") {
+        data$get_logs()
       }
     })
 
@@ -208,8 +220,7 @@ experiments_server <- function(
     })
 
     ## setup experiment devices selector table
-    experiment_devices <- callModule(
-      module_selector_table_server,
+    experiment_devices <- module_selector_table_server(
       "experiment_devices",
       get_data = get_experiment_devices_for_table,
       id_column = "core_id",
@@ -382,5 +393,8 @@ experiments_server <- function(
     #     linked$selected <- all_devices$get_selected_ids()
     #   }
     # })
+
+    # logs ========
+    logs <- logs_plot_server("logs_plot", data)
   })
 }

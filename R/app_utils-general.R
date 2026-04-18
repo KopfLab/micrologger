@@ -19,6 +19,18 @@ use_app_utils <- function() {
     "
     )) |>
       singleton(),
+    # pills
+    tags$style(HTML(
+      "
+    .center-pills .nav-pills {
+    text-align: center;
+  }
+  .center-pills .nav-pills > li {
+    float: none;
+    display: inline-block;
+  }
+    "
+    )),
     # action buttons a links
     tags$style(HTML(
       "
