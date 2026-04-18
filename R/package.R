@@ -7,5 +7,6 @@
 #' @importFrom tibble tibble
 #' @import dplyr
 #' @import shiny
+#' @import ggplot2
 ## usethis namespace: end
 NULL
