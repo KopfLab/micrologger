@@ -221,3 +221,65 @@ generate_experiment_configuration_ui <- function(
     )
   )
 }
+
+generate_device_control_ui <- function(ns) {
+  tabPanel(
+    value = "device_ctrl",
+    title = "Device Control",
+    br(),
+    # devices
+    shinydashboard::box(
+      title = span(
+        "Devices under control of this experiment",
+        div(
+          style = "position: absolute; right: 50px; top: 5px;",
+          sddsParticle::sdds_ui_devices_actions("sdds"),
+        )
+      ),
+      width = 12,
+      status = "info",
+      solidHeader = TRUE,
+      collapsible = TRUE,
+      sddsParticle::sdds_ui_devices_table("sdds"),
+      footer = tagList("Select the devices you want to work with.")
+    ),
+
+    # SDDS structure div
+    sddsParticle::sdds_ui_structures_div(
+      id = "sdds",
+      # Common actions
+      shinydashboard::box(
+        title = span("Common actions"),
+        width = 12,
+        status = "info",
+        solidHeader = TRUE,
+        actionButton(
+          ns("start_stirrer"),
+          "Start stirring",
+          icon = icon("play")
+        ),
+        actionButton(
+          ns("stop_stirrer"),
+          "Stop stirring",
+          icon = icon("stop")
+        ),
+        actionButton(ns("change_stirrer"), "Change speed", icon = icon("gauge"))
+      ),
+      # SDDS structures
+      shinydashboard::box(
+        title = span(
+          "Data structures",
+          div(
+            style = "position: absolute; right: 10px; top: 5px;",
+            sddsParticle::sdds_ui_structures_actions("sdds")
+          )
+        ),
+        width = 12,
+        status = "info",
+        solidHeader = TRUE,
+        sddsParticle::sdds_ui_structures_table("sdds"),
+        footer = tagList("Click to change values (if allowed).")
+      )
+    )
+  )
+}

@@ -149,12 +149,7 @@ experiments_server <- function(
           )
         },
         if (data$is_owner_or_admin()) {
-          tabPanel(
-            value = "device_ctrl",
-            title = "Device Control",
-            br(),
-            sddsParticle::sdds_ui("sdds", device_list_title = "Devices")
-          )
+          generate_device_control_ui(ns = ns)
         }
       )
     })
@@ -302,7 +297,21 @@ experiments_server <- function(
       data$release_device()
     })
 
-    # devices ========
+    # device control  ========
+
+    ## custom actions
+    observeEvent(
+      input$start_stirrer,
+      particle$edit_structure("stirrer.action", value = "start")
+    )
+    observeEvent(
+      input$stop_stirrer,
+      particle$edit_structure("stirrer.action", value = "stop")
+    )
+    observeEvent(
+      input$change_stirrer,
+      particle$edit_structure("stirrer.setpoint_rpm")
+    )
 
     # ## get avilable devices for table
     # get_devices_for_table <- reactive({

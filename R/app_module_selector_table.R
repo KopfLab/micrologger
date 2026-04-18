@@ -156,8 +156,7 @@ module_selector_table_server <- function(
         # info
         log_info(
           ns = ns,
-          "(re-) rendering selection table",
-          user_msg = "Loading table"
+          "(re-) rendering selection table" #,user_msg = "Loading table"
         )
         # get the table
         table <-
@@ -681,8 +680,7 @@ module_selector_table_server <- function(
       log_success(
         ns = ns,
         "is_table_reloaded() now returns ",
-        n,
-        user_msg = "Complete"
+        n #, user_msg = "Complete"
       )
     })
 

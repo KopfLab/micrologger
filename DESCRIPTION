@@ -1,6 +1,6 @@
 Package: micrologger
 Title: GUI for GEOM µLoggers
-Version: 0.2.2
+Version: 0.2.3
 Authors@R: 
     person("Sebastian", "Kopf", , "seb.kopf@gmail.com", role = c("aut", "cre"))
 Description: Provides a graphical user interface to interact with µLoggers including setting up experiments, visualizating data, and sending commands.
