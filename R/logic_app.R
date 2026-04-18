@@ -117,3 +117,41 @@ get_devices_for_table_in_app <- function(devices, timezone, user_id) {
       Connected = "connected"
     )
 }
+
+# plotting functions for the app ======
+
+get_empty_plot_in_app <- function(font_size) {
+  ggplot() +
+    annotate(
+      "text",
+      x = 0,
+      y = 0,
+      label = "no data",
+      vjust = 0.5,
+      hjust = 0.5,
+      size = font_size
+    ) +
+    theme_void()
+}
+
+get_logs_plot_in_app <- function(logs, devices, ..., legend_position) {
+  p <- logs |>
+    filter(.data$device %in% !!devices) |>
+    ml_plot_logs(...)
+
+  # legend position
+  if (legend_position == "bottom") {
+    p <- p +
+      theme(legend.position = "bottom", legend.direction = "vertical")
+  } else if (legend_position == "hide") {
+    p <- p + theme(legend.position = "none")
+  }
+
+  return(p)
+}
+
+get_logs_for_download_in_app <- function(logs, devices, filter_paths) {
+  logs |>
+    filter(.data$device %in% !!devices) |>
+    filter(.data$path %in% filter_paths)
+}

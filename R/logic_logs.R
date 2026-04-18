@@ -56,7 +56,9 @@ ml_parse_logs <- function(
       # factors
       parent = factor(.data$parent),
       # snapshot
-      is_snap = !is.na(.data$snapshot_id)
+      is_snap = !is.na(.data$snapshot_id),
+      # step
+      is_step = FALSE
     ) |>
     # is this a discrete variable?
     mutate(
@@ -65,39 +67,45 @@ ml_parse_logs <- function(
     )
 
   # create stepwise values for discrete variables (n = NA)
-  logs <-
-    bind_rows(
-      logs |> mutate(is_step = FALSE),
+  if (nrow(logs) > 0) {
+    logs <-
       logs |>
-        mutate(
-          # extend the last discrete data point to the latest data point we have for the experiment
-          .by = c("exp_id"),
-          .max_dt = max(.data$log_datetime)
-        ) |>
-        filter(.data$is_discrete) |>
-        arrange(.data$log_datetime) |>
-        mutate(
-          # interpret these across segments
-          .by = c("exp_id", "core_id", "data_path"),
-          log_datetime = lead(
-            .data$log_datetime,
-            1,
-            default = .data$.max_dt[1]
-          ) -
-            lubridate::milliseconds(1),
-          is_step = TRUE
-        ) |>
-        select(-".max_dt")
-    ) |>
-    arrange(.data$log_datetime)
+      bind_rows(
+        logs |>
+          mutate(
+            # extend the last discrete data point to the latest data point we have for the experiment
+            .by = c("exp_id"),
+            .max_dt = max(.data$log_datetime)
+          ) |>
+          filter(.data$is_discrete) |>
+          arrange(.data$log_datetime) |>
+          mutate(
+            # interpret these across segments
+            .by = c("exp_id", "core_id", "data_path"),
+            log_datetime = lead(
+              .data$log_datetime,
+              1,
+              default = .data$.max_dt[1]
+            ) -
+              lubridate::milliseconds(1),
+            is_step = TRUE
+          ) |>
+          select(-".max_dt")
+      ) |>
+      arrange(.data$log_datetime)
+  }
 
   # duration
-  logs <- logs |>
-    mutate(
-      .by = any_of("exp_id"),
-      duration.sec = (.data$log_datetime - min(.data$log_datetime)) |>
-        as.numeric("secs")
-    )
+  if (nrow(logs) > 0) {
+    logs <- logs |>
+      mutate(
+        .by = any_of("exp_id"),
+        duration.sec = (.data$log_datetime - min(.data$log_datetime)) |>
+          as.numeric("secs")
+      )
+  } else {
+    logs$duration.sec <- numeric()
+  }
 
   # local TZ conversion
   if (!is.null(timezone)) {
@@ -225,7 +233,9 @@ ml_plot_logs <- function(
     # use numeric values for now
     # TODO: provide factor based plotting for text-based values
     dplyr::filter(!is.na(value)) |>
-    dplyr::filter({{ filter }})
+    dplyr::filter({{ filter }}) |>
+    # make sure data is in order
+    arrange(datetime)
 
   # outliers
   # FIXME: implement
@@ -290,6 +300,28 @@ ml_plot_logs <- function(
 
   # limits
   if (!is.null(timescale_lim)) {
+    # figure out what's in range
+    if (timescale == "datetime") {
+      plot_df <- plot_df |>
+        mutate(
+          in_range = datetime >= timescale_lim[1] & datetime <= timescale_lim[2]
+        )
+    } else {
+      plot_df <- plot_df |>
+        mutate(
+          in_range = duration.sec >= timescale_lim[1] &
+            duration.sec <= timescale_lim[2]
+        )
+    }
+    # for proper y scaling, select the data that's just before/after the selecting time scale
+    plot_df <- plot_df |>
+      mutate(
+        .by = c("exp_id", "device", "path"),
+        just_before = !in_range & lag(in_range, default = FALSE),
+        just_after = !in_range & lead(in_range, default = FALSE)
+      ) |>
+      filter(in_range | just_before | just_after)
+
     p <- p + coord_cartesian(xlim = timescale_lim)
   }
 
@@ -297,8 +329,6 @@ ml_plot_logs <- function(
   if (show_error_range) {
     # figure out continuous stretches of error bars
     plot_df <- plot_df |>
-      # make sure the data is in order for this
-      arrange(datetime) |>
       mutate(
         .by = c("exp_id", "device", "segment", "path"),
         has_error = !is.na(sd),
@@ -355,28 +385,5 @@ ml_plot_logs <- function(
   if (show_points) {
     p <- p + geom_point(data = ~ .x |> filter(!is_step))
   }
-
-  # # duration plot aesthetics
-  # if (!is.null(duration_breaks)) {
-  #   p <- p %+%
-  #     aes(x = duration) +
-  #     labs(x = str_c("Duration [", duration_units, "]"))
-  #   if (!is.na(duration_interval)) {
-  #     p <- p %+%
-  #       ggplot2::scale_x_continuous(
-  #         breaks = seq(0, max(plot_df$duration), by = duration_interval)
-  #       )
-  #   }
-  # } else {
-  #   if (!is.null(date_breaks)) {
-  #     p <- p %+% aes(x = datetime) + scale_x_datetime(date_breaks = date_breaks)
-  #   } else {
-  #     p <- p %+% aes(x = datetime) + scale_x_datetime()
-  #   }
-  #   p <- p +
-  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
-  #     labs(x = NULL)
-  # }
-
   return(p)
 }
