@@ -27,7 +27,8 @@ data_server <- function(
       current_exp_devices = NULL,
       has_exp_device_selected = FALSE,
       selected_exp_device_core_id = NULL,
-      selected_exp_device = NULL
+      selected_exp_device = NULL,
+      refresh_logs = 0
     )
 
     # EXPERIMENTS =======
@@ -306,6 +307,40 @@ data_server <- function(
       return(out$result)
     })
 
+    # LOGS ======
+
+    ## refresh logs ======
+    refresh_logs <- function() {
+      # ensure everything is loaded from scratch
+      values$refresh_logs <- values$refresh_logs + 1L
+    }
+
+    # FIXME: this is not yet compatible with multiple exp loading!
+    # but already brings in the experiment name (as "exp")
+    get_logs <- reactive({
+      req(values$has_exp_loaded)
+      req(values$current_exp_id)
+      values$refresh_logs
+      log_info(ns = ns, user_msg = "Fetching experiment logs")
+      # safely call function
+      out <-
+        ml_get_logs(
+          exp_id = values$current_exp_id,
+          experiments = get_experiments() |>
+            select("exp_id", "exp" = "name")
+        ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (is.null(out$result) || nrow(out$result) == 0L) {
+        return(NULL)
+      }
+      log_success(
+        ns = ns,
+        user_msg = format_inline("Retrieved {nrow(out$result)} log records.")
+      )
+      return(out$result)
+    })
+
     # RETURN ====
     list(
       ## admin
@@ -340,7 +375,10 @@ data_server <- function(
       claim_device = claim_device,
       release_device = release_device,
       ## registered devices ====
-      get_registered_devices = get_registered_devices
+      get_registered_devices = get_registered_devices,
+      ## logs =====
+      refresh_logs = refresh_logs,
+      get_logs = get_logs
     )
   })
 }
