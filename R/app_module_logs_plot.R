@@ -440,7 +440,7 @@ logs_plot_server <- function(
 }
 
 
-logs_plot_ui <- function(id, plot_height = 800) {
+logs_plot_ui <- function(id, plot_height = 500) {
   ns <- NS(id)
 
   tagList(
