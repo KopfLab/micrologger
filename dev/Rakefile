@@ -1,0 +1,24 @@
+# This is to simplfy app development
+# Note: guard-process does not work reliably on newer bundler and the autoreload in shiny is very fast so
+# using that and just helping with the guard to touch app.R for a full reload of the app sources
+# Installation:
+#  - check for Ruby: ruby --version
+#  - install Bundler: gem install bundler
+#  - install Gems: bundle install
+
+# How to use:
+#  - start 2 terminals
+#  - terminal 1: rake dev
+#  - terminal 2: rake guard
+
+desc "run the shiny app in development mode"
+task :dev do
+    puts "*** REMEMBER to start `rake guard` in a separate terminal for auto-reload"
+    cmd = "rm(list = ls()); Sys.setenv('LOG_LEVEL' = 'DEBUG'); shiny::devmode(TRUE); options(shiny.autoreload.pattern = 'app.R'); shiny::runApp('app.R')"
+    sh "R -e \"#{cmd}\""
+end
+
+desc "watch for source changes (in package R folder) to trigger shiny's auto-reload"
+task :guard do
+    sh "bundle exec guard -w ../R"
+end

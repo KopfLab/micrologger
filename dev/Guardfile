@@ -1,0 +1,35 @@
+# Installation:
+#  - check for Ruby: ruby --version
+#  - install Bundler: gem install bundler
+#  - install Gems: bundle install
+#  - follow instructions in Rakefile
+
+require 'thread'
+$debounce_timer = nil
+$debounce_mutex = Mutex.new
+
+def debounce(delay = 0.2)
+  $debounce_mutex.synchronize do
+    if $debounce_timer
+      $debounce_timer.kill
+    end
+
+    $debounce_timer = Thread.new do
+      sleep delay
+      yield
+    end
+  end
+end
+
+guard :shell do
+  # Watch any .R file in ../R (see rake guard)
+  watch(%r{^.+\.R$}) do |m|
+    puts "Change detected in #{m[0]}"
+    debounce() do
+        puts "\n*** Triggering shiny auto reload ***"
+        #`touch app.R` # does not always suffice --> below strategy is more reliable
+        `cp app.R app.R.tmp`
+        `mv app.R.tmp app.R`
+    end
+  end
+end

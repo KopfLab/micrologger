@@ -1,0 +1,32 @@
+# output files
+*.html
+
+# OS generated files
+.DS_Store
+.DS_Store?
+~$*
+.Spotlight*
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ruby
+Gemfile.lock
+
+# exclude R & Rstudio temp files
+*.utf8.md
+*.knit.md
+.Rproj.user
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+/.quarto/
+
+# exclude authentication tokens
+.httr-oauth
+
+# app temporary files
+logs/*
+cache/*
+
