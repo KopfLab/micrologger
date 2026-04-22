@@ -123,7 +123,7 @@ ml_get_experiments <- function(
 
 #' Retrieve experiment devices
 #'
-#' Returns experiment-devices merged with devices table
+#' Returns experiment-devices merged with devices table and structure information
 #'
 #' @inheritParams ml_get_experiments
 #' @return experiments_devices
@@ -155,6 +155,7 @@ ml_get_experiment_devices <- function(
   df <-
     tbl(con, "experiment_devices") |>
     left_join(tbl(con, "devices"), by = "core_id") |>
+    left_join(tbl(con, "structures"), by = c("type", "version")) |>
     left_join(
       tbl(con, "experiments") |>
         dplyr::select(
