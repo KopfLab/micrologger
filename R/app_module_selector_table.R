@@ -18,7 +18,8 @@
 #' @param auto_reselect whether to reselect selected rows automatically after reloads
 #' @param render_html list of columns which should NOT be html escaped (e.g. for links), use dplyr::everything() to render everything
 #' @param formatting_calls list of lists with function and columns e.g. list(list(func = formatCurrency, columns = "x)) or a columns expressione.g. list(list(func = formatCurrencty, columns_expr = rlang::expr(matches("abc"))))
-#' @param ... passed to options
+#' @param paging TRUE/FALSE whether to have paging information
+#' @param ... additional dat table options (https://datatables.net/reference/option/) passed to options
 module_selector_table_server <- function(
   id,
   get_data,
@@ -45,6 +46,7 @@ module_selector_table_server <- function(
   editable = FALSE,
   extensions = list(),
   no_data_message = "No data available",
+  paging = TRUE,
   ...
   # note: considered allowing editable option but it doesn't work so well for select tables
 ) {
@@ -65,6 +67,7 @@ module_selector_table_server <- function(
       selected_ids = c(),
       selected_cells = c(), # only matters if in 'cell' selection mode
       update_selected = if (auto_reselect) -1L else 0L, # trigger selection update (circumventing circular triggers with user selection)
+      render_trigger = 0, # trigger rendering
       rendering = TRUE, # whether the table is currently rendering
       table_exists = FALSE, # whether the table exists or not
       table_reloaded = 0L, # whether the table has re-loaded completely
@@ -75,7 +78,7 @@ module_selector_table_server <- function(
       order = list(), # ordering information
       filter = filter, # filter setting
       formatting_calls = formatting_calls, # formatting calls
-      options = list(...) #
+      options = list(paging = paging, ...) # data table options
     )
 
     # create table df =============
@@ -132,7 +135,7 @@ module_selector_table_server <- function(
       return(FALSE)
     }
 
-    # reset visible columns (always isolate, trigger independently!)
+    # reset visible columns (always isolate, trigger independently with render_table()!)
     reset_visible_columns <- function() {
       isolate({
         if (length(values$visible_cols) > 0) {
@@ -147,17 +150,23 @@ module_selector_table_server <- function(
     })
 
     # render data table ========
+
+    render_table <- function() {
+      isolate({
+        values$render_trigger <- values$render_trigger + 1L
+      })
+    }
+
     render_html_expr <- rlang::enexpr(render_html)
     output$selection_table <- DT::renderDataTable(
       {
         # triggers
+        values$render_trigger
         get_table_df_visible_cols()
-        values$filter
+
         # info
-        log_info(
-          ns = ns,
-          "(re-) rendering selection table" #,user_msg = "Loading table"
-        )
+        log_info(ns = ns, "(re-) rendering selection table")
+
         # get the table
         table <-
           tryCatch(
@@ -181,8 +190,7 @@ module_selector_table_server <- function(
                 class = class,
                 container = container,
                 selection = selection,
-                #fillContainer = TRUE, # note this is useless inside DT:renderDataTable
-                # (but also not necessary, use scrollY = "max(400px, calc(100vh - 200px))" instead)
+                fillContainer = TRUE,
                 escape = if (
                   rlang::is_call(render_html_expr) &&
                     rlang::call_name(render_html_expr) == "everything"
@@ -195,6 +203,7 @@ module_selector_table_server <- function(
                 extensions = extensions,
                 options = c(
                   list(
+                    deferRender = TRUE,
                     order = values$order,
                     ordering = ordering,
                     pageLength = values$page_length,
@@ -510,7 +519,7 @@ module_selector_table_server <- function(
     deselect_all <- function() {
       select_rows(c())
     }
-    observeEvent(input$deselect_all, deselct_all())
+    observeEvent(input$deselect_all, deselect_all())
 
     # set/pick columns event =====
     observeEvent(input$pick_cols, {
@@ -537,6 +546,7 @@ module_selector_table_server <- function(
       showModal(dlg)
     })
     observeEvent(input$apply_cols, {
+      removeModal()
       if (set_visible_columns(input$visible_cols)) {
         log_info(
           ns = ns,
@@ -550,7 +560,6 @@ module_selector_table_server <- function(
           user_msg = "Switching columns"
         )
       }
-      removeModal()
     })
 
     # toggle column search event =====
@@ -562,6 +571,7 @@ module_selector_table_server <- function(
           user_msg = "Enabling column filters"
         )
         values$filter <- "top"
+        render_table()
       } else if (identical(values$filter, "top")) {
         log_info(
           ns = ns,
@@ -569,6 +579,7 @@ module_selector_table_server <- function(
           user_msg = "Disabling column filters"
         )
         values$filter <- "none"
+        render_table()
       }
     })
 
@@ -733,7 +744,8 @@ module_selector_table_server <- function(
       set_visible_columns = set_visible_columns,
       reset_visible_columns = reset_visible_columns,
       change_formatting_calls = change_formatting_calls,
-      update_options = update_options
+      update_options = update_options,
+      render_table = render_table
     )
   })
 }
@@ -741,7 +753,9 @@ module_selector_table_server <- function(
 # Selector table
 module_selector_table_ui <- function(id) {
   ns <- NS(id)
-  DT::dataTableOutput(ns("selection_table")) |> shinycssloaders::withSpinner()
+  DT::dataTableOutput(ns("selection_table"), height = "100%") |>
+    shinycssloaders::withSpinner() |>
+    bslib::as_fill_carrier()
 }
 
 # Selection buttons
