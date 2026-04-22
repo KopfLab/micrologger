@@ -122,3 +122,15 @@ CREATE TABLE experiment_logs (
   UNIQUE (exp_id, log_id)
 );
 
+-- Table: usage_stats
+
+DROP TABLE IF EXISTS device_usage_stats CASCADE;
+
+CREATE TABLE device_usage_stats (
+    core_id TEXT NOT NULL REFERENCES devices(core_id),
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+    recording_events_n INTEGER NOT NULL DEFAULT 0,
+    nonrecording_events_n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (core_id, year, month)
+);

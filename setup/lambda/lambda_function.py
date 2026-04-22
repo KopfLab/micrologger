@@ -55,6 +55,41 @@ def get_parameter(event, param_name, require=True):
     return param, None
 
 
+def update_usage_stats(cursor, core_id, payload_bytes):
+    try:
+        cursor.execute(
+            """
+            INSERT INTO device_usage_stats (core_id, year, month, recording_events_n, nonrecording_events_n)
+            VALUES (
+                %s,
+                EXTRACT(YEAR FROM NOW())::INTEGER,
+                EXTRACT(MONTH FROM NOW())::INTEGER,
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM experiments e
+                    JOIN experiment_devices ed ON e.exp_id = ed.exp_id
+                    WHERE ed.core_id = %s
+                      AND e.recording = TRUE
+                      AND e.archived = FALSE
+                ) THEN CEIL(%s::FLOAT / 1024)::INTEGER ELSE 0 END,
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM experiments e
+                    JOIN experiment_devices ed ON e.exp_id = ed.exp_id
+                    WHERE ed.core_id = %s
+                      AND e.recording = TRUE
+                      AND e.archived = FALSE
+                ) THEN 0 ELSE CEIL(%s::FLOAT / 1024)::INTEGER END
+            )
+            ON CONFLICT (core_id, year, month) DO UPDATE SET
+                recording_events_n    = device_usage_stats.recording_events_n    + EXCLUDED.recording_events_n,
+                nonrecording_events_n = device_usage_stats.nonrecording_events_n + EXCLUDED.nonrecording_events_n
+            """,
+            [core_id, core_id, payload_bytes, core_id, payload_bytes],
+        )
+        logger.info("updated usage stats for device {}".format(core_id))
+    except Exception as e:
+        logger.error("failed to update usage stats for {}: {}".format(core_id, str(e)))
+
+
 def get_payload_type(core_id, payload):
     keys = set(payload.keys())
     if {"s", "e", "t", "v"}.issubset(keys):
@@ -369,6 +404,9 @@ def lambda_handler(event, context):
                 return err
 
             logger.info("core_id {} belongs to group {}".format(core_id, group_id))
+
+            update_usage_stats(cursor, core_id, len(json.dumps(payloads)))
+            db.commit()
 
             for payload in payloads:
                 result = process_single_payload(
