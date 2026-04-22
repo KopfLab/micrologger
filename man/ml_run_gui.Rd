@@ -14,7 +14,9 @@ ml_run_gui(
   timezone = Sys.timezone(),
   options = list(),
   uiPattern = "/",
-  enableBookmarking = "url"
+  enableBookmarking = "url",
+  default_theme = c("flatly", "cosmo", "lumen", "minty", "sandstone", "darkly", "cyborg",
+    "slate", "superhero", "solar")
 )
 }
 \arguments{

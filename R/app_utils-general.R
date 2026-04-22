@@ -4,116 +4,24 @@
 # call to use app util error formatting
 use_app_utils <- function() {
   tagList(
+    # adopt error color of the theme and make error validation larger
     tags$style(HTML(
-      ".shiny-output-error-validation { color: #b30000; font-size: 150%;}"
+      ".shiny-output-error-validation {
+        color: var(--bs-danger) !important;
+        font-size: 1.5rem;
+      }"
     )) |>
       singleton(),
+    # support ansii
     tags$style(HTML(paste(format(cli::ansi_html_style()), collapse = "\n"))) |>
       singleton(),
+    # make card headings taller
+    tags$style(HTML(".card-header { padding: 1rem 1.25rem;}")) |> singleton(),
+    # preseve spacing of CLI errors that might make it to the gui
     tags$style(HTML(
-      "
-      .cli-inline-error {
+      ".cli-inline-error {
         display: inline;
         white-space: pre-wrap;
-      }
-    "
-    )) |>
-      singleton(),
-    # pills
-    tags$style(HTML(
-      "
-    .center-pills .nav-pills {
-    text-align: center;
-  }
-  .center-pills .nav-pills > li {
-    float: none;
-    display: inline-block;
-  }
-    "
-    )),
-    # action buttons a links
-    tags$style(HTML(
-      "
-      .btn-link {
-        padding: 0;
-        border: none;
-        background: none;
-        color: #0088cc;
-        text-decoration: none;
-      }
-
-      .btn-link:hover {
-        color: #005580;
-        background: none;      /* remove gray hover */
-        text-decoration: none;
-      }
-
-      .btn-link:focus,
-      .btn-link:active {
-        background: none;
-        box-shadow: none;
-      }
-
-      .btn-link:disabled {
-        color: #999999;
-        text-decoration: none;
-      }
-    "
-    )),
-
-    # for inputs with save divs
-    tags$style(HTML(
-      "
-      .input-with-save {
-        position: relative;
-        display: inline-block;
-        width: 100%;
-      }
-
-      .input-with-save:not(:has(textarea)) {
-        height: 34px;
-      }
-
-      .input-with-save input,
-      .input-with-save textarea {
-        width: 100%;
-        height: 34px;
-        padding: 6px 36px 6px 12px;
-        font-size: 14px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box;
-      }
-
-      .input-with-save textarea {
-        height: auto;
-      }
-
-      .input-with-save > a {
-        position: absolute;
-        right: 4px;
-        top: 50%;
-        transform: translateY(-50%);
-        line-height: 1;
-      }
-
-      .input-with-save:has(textarea) > a {
-        top: 8px;
-        transform: none;
-      }
-
-      .input-with-save > a svg {
-        fill: #000;
-        transition: fill 0.15s ease, transform 0.15s ease;
-      }
-
-      .input-with-save > a:hover svg {
-        fill: #aaa;
-        transform: scale(1.2);
-      }
-
-      .input-with-save > a:focus {
-        outline: none;
       }"
     )) |>
       singleton()
@@ -122,16 +30,23 @@ use_app_utils <- function() {
 
 # call the other log functions instead for clarity in the code
 # @param ... toaster parameters
-log_any <- function(msg, log_fun, toaster_fun, ns = NULL, toaster = NULL, ...) {
+log_any <- function(
+  msg,
+  log_fun,
+  ns = NULL,
+  toaster = NULL,
+  position = "bottom-left",
+  ...
+) {
   ns <- if (!is.null(ns)) paste0("[", ns(NULL), "] ") else ""
   if (!is.null(toaster)) {
     log_fun(paste0(ns, msg, " [GUI msg: '", toaster, "']", collapse = ""))
-    toaster_fun(
-      cli::ansi_html(toaster),
-      position = "bottom-right",
-      newestOnTop = TRUE,
-      ...
-    )
+    bslib::toast(
+      HTML(cli::ansi_html(toaster)),
+      position = position,
+      ...,
+    ) |>
+      bslib::show_toast()
   } else {
     log_fun(paste0(ns, msg, collapse = ""))
   }
@@ -242,11 +157,10 @@ log_error <- function(..., ns = NULL, user_msg = NULL, error = NULL) {
     ),
     ns = ns,
     log_fun = rlog::log_error,
-    toaster_fun = shinytoastr::toastr_error,
     toaster = user_msg,
-    title = "Encountered error",
-    timeOut = 10000,
-    closeButton = TRUE
+    header = "Encountered error",
+    type = "danger",
+    duration_s = 10
   )
 
   if (!is.null(error)) {
@@ -263,11 +177,10 @@ log_warning <- function(..., ns = NULL, user_msg = NULL, warning = NULL) {
     msg = msg,
     ns = ns,
     log_fun = rlog::log_warn,
-    toaster_fun = shinytoastr::toastr_warning,
     toaster = if (!is.null(warning)) warning else user_msg,
-    title = if (!is.null(warning)) cli::ansi_html(user_msg) else NULL,
-    progressBar = TRUE,
-    extendedTimeOut = 3000
+    header = if (!is.null(warning)) HTML(cli::ansi_html(user_msg)) else NULL,
+    type = "warning",
+    duration_s = 5
   )
 }
 
@@ -280,8 +193,9 @@ log_info <- function(..., ns = NULL, user_msg = NULL) {
     msg = msg,
     ns = ns,
     log_fun = rlog::log_info,
-    toaster_fun = shinytoastr::toastr_info,
-    toaster = user_msg
+    toaster = user_msg,
+    type = "info",
+    duration_s = 2
   )
 }
 
@@ -294,8 +208,9 @@ log_success <- function(..., ns = NULL, user_msg = NULL) {
     msg = msg,
     ns = ns,
     log_fun = rlog::log_info,
-    toaster_fun = shinytoastr::toastr_success,
-    toaster = user_msg
+    toaster = user_msg,
+    type = "success",
+    duration_s = 2
   )
 }
 
@@ -305,12 +220,8 @@ log_debug <- function(..., ns = NULL) {
 
 # ui elements ======
 
-div_input_with_save <- function(...) {
-  tags$div(class = "input-with-save", ...)
-}
-
 # convenience function for adding spaces (not the most elegant way but works)
-spaces <- function(n) {
+spaces <- function(n = 1) {
   htmltools::HTML(rep("&nbsp;", n))
 }
 
@@ -320,6 +231,6 @@ inline <- function(...) {
 }
 
 # convenience function to add tooltip
-add_tooltip <- function(widget, message, size = "medium") {
-  prompter::add_prompt(widget, message = message, size = size)
+add_tooltip <- function(widget, ...) {
+  bslib::tooltip(widget, ...)
 }

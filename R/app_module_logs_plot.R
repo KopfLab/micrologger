@@ -463,9 +463,10 @@ logs_plot_ui <- function(id, plot_height = 500) {
       # PLOT OPTIONS ================
       sidebar = bslib::sidebar(
         position = "right",
+        width = "160",
         title = "Plot Options",
-        checkboxInput(ns("show_errors"), "Errors:", value = FALSE),
-        checkboxInput(ns("show_points"), "Show points:", value = FALSE),
+        checkboxInput(ns("show_errors"), "Show errors", value = FALSE),
+        checkboxInput(ns("show_points"), "Show points", value = FALSE),
         #checkboxInput(ns("show_outliers"), "Outliers:", value = TRUE),
         #checkboxInput(ns("overlay_exps"), Overlay Exps:", value = FALSE),
         radioButtons(

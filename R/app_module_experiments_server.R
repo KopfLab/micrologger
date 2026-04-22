@@ -2,7 +2,7 @@
 experiments_server <- function(
   id,
   data,
-  particle,
+  sdds,
   get_timezone
 ) {
   # actual module server
@@ -58,19 +58,9 @@ experiments_server <- function(
       ),
       selection = "single",
       # view & scrolling
-      allow_view_all = TRUE,
-      initial_page_length = -1,
-      dom = "ft",
-      scrollX = TRUE,
-      scrollY = "150px"
+      paging = FALSE,
+      dom = "ft"
     )
-    output$experiments_footer <- renderUI({
-      if (!is.null(data$get_experiments())) {
-        "Select the experiment you want to work with or add a new experiment."
-      } else {
-        spaces(1)
-      }
-    })
 
     # experiment editing =============
 
@@ -128,18 +118,16 @@ experiments_server <- function(
     ## generate experiment tabset
     output$experiment_tabset <- renderUI({
       req(data$has_exp_loaded())
-      tabsetPanel(
+      bslib::navset_card_pill(
         id = ns("tabset"),
-        type = "pills",
         selected = if (data$is_owner_or_admin()) {
           isolate(values$experiment_tab)
         } else {
           "data"
         },
-        tabPanel(
+        bslib::nav_panel(
           value = "data",
           "Data",
-          br(),
           logs_plot_ui(ns("logs_plot"))
         ),
         if (data$is_owner_or_admin()) {
@@ -151,7 +139,9 @@ experiments_server <- function(
         if (data$is_owner_or_admin()) {
           generate_device_control_ui(ns = ns)
         }
-      )
+      ) |>
+        div(class = "centered-pills") |>
+        bslib::as_fill_carrier()
     })
 
     ## update experiment tab
@@ -225,11 +215,9 @@ experiments_server <- function(
       ),
       selection = "single",
       auto_reselect = FALSE,
-      # view & scrolling
-      allow_view_all = TRUE,
-      initial_page_length = -1,
+      paging = FALSE,
       dom = "ft",
-      no_data_message = ""
+      no_data_message = "No devices are linked to this experiment yet. Link a device."
     )
 
     ## refresh experiment devices
@@ -299,19 +287,44 @@ experiments_server <- function(
 
     # device control  ========
 
+    # show data structure and common actions and disable/enable common actions
+    observeEvent(sdds$devices$get_selected_ids(), {
+      device_selected <- !is_empty(sdds$devices$get_selected_ids())
+      shinyjs::toggleState("start_stirrer", condition = device_selected)
+      shinyjs::toggleState("stop_stirrer", condition = device_selected)
+      shinyjs::toggleState(
+        "change_stirrer",
+        condition = device_selected
+      )
+      shinyjs::toggleState("save", condition = device_selected)
+      if (device_selected) {
+        bslib::accordion_panel_open(
+          id = "device_control_accordion",
+          values = "Common actions"
+        )
+        bslib::accordion_panel_open(
+          id = "device_control_accordion",
+          values = "Data structures"
+        )
+      }
+    })
+
     ## custom actions
     observeEvent(
       input$start_stirrer,
-      particle$edit_structure("stirrer.action", value = "start")
+      sdds$edit_structure("stirrer.action", value = "start")
     )
     observeEvent(
       input$stop_stirrer,
-      particle$edit_structure("stirrer.action", value = "stop")
+      sdds$edit_structure("stirrer.action", value = "stop")
     )
     observeEvent(
       input$change_stirrer,
-      particle$edit_structure("stirrer.setpoint_rpm")
+      sdds$edit_structure("stirrer.setpoint_rpm")
     )
+    observeEvent(input$save, {
+      sdds$edit_structure("SYSTEM.action", value = "saveState")
+    })
 
     # ## get avilable devices for table
     # get_devices_for_table <- reactive({

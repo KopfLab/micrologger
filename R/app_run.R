@@ -16,7 +16,19 @@ ml_run_gui <- function(
   timezone = Sys.timezone(),
   options = list(),
   uiPattern = "/",
-  enableBookmarking = "url"
+  enableBookmarking = "url",
+  default_theme = c(
+    "flatly",
+    "cosmo",
+    "lumen",
+    "minty",
+    "sandstone",
+    "darkly",
+    "cyborg",
+    "slate",
+    "superhero",
+    "solar"
+  )
 ) {
   # startup
   log_info("\n\n========================================================")
@@ -48,6 +60,7 @@ ml_run_gui <- function(
       is_scalar_character(timezone) && timezone %in% base::OlsonNames(),
       "must be an OlsonName"
     )
+  default_theme = arg_match(default_theme)
 
   # check DB connection
   cli_alert_info("Checking database connection...")
@@ -55,7 +68,7 @@ ml_run_gui <- function(
   cli_alert_success("Connected.")
 
   # get user groups and check we have at least one
-  groups <- ml_get_groups(group_id = if (user_is_admin) NULL else user_groups)
+  groups <- ml_get_groups(group_id = user_groups)
   if (nrow(groups) == 0) {
     cli_abort(
       c(
@@ -69,16 +82,16 @@ ml_run_gui <- function(
   ui <- ml_ui(
     timezone = timezone,
     user = if (!is.na(user_first_name)) user_first_name else user_id,
-    groups = groups
+    groups = groups,
+    default_theme = default_theme
   )
   server <- ml_server(
     token = token,
     user_id = user_id,
-    # set the first group as the default
-    user_group = groups$group_id[1],
     user_first_name = user_first_name,
     user_last_name = user_last_name,
-    user_is_admin = user_is_admin
+    user_is_admin = user_is_admin,
+    groups = groups
   )
 
   # generate app

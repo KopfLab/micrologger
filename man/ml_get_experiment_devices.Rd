@@ -15,5 +15,5 @@ ml_get_experiment_devices(
 experiments_devices
 }
 \description{
-Returns experiment-devices merged with devices table
+Returns experiment-devices merged with devices table and structure information
 }

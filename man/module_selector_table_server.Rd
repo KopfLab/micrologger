@@ -28,6 +28,7 @@ module_selector_table_server(
   editable = FALSE,
   extensions = list(),
   no_data_message = "No data available",
+  paging = TRUE,
   ...
 )
 }
@@ -66,7 +67,9 @@ module_selector_table_server(
 
 \item{formatting_calls}{list of lists with function and columns e.g. list(list(func = formatCurrency, columns = "x)) or a columns expressione.g. list(list(func = formatCurrencty, columns_expr = rlang::expr(matches("abc"))))}
 
-\item{...}{passed to options}
+\item{paging}{TRUE/FALSE whether to have paging information}
+
+\item{...}{additional dat table options (https://datatables.net/reference/option/) passed to options}
 }
 \description{
 Selector table server
