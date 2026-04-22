@@ -1,7 +1,7 @@
 # data server taking care loading data only as needed
 data_server <- function(
   id,
-  particle,
+  sdds,
   experiment_core_ids,
   get_timezone,
   get_user_id,
@@ -59,7 +59,7 @@ data_server <- function(
       values$current_exp_id <- NULL
       values$has_exp_device_selected <- FALSE
       values$selected_exp_device_core_id <- NULL
-      particle$refresh_devices()
+      sdds$refresh_devices()
     }
 
     ## add experiment =======
@@ -187,7 +187,7 @@ data_server <- function(
       values$refresh_exp_devices <- values$refresh_exp_devices + 1L
       values$has_exp_device_selected <- FALSE
       values$selected_exp_device_core_id <- NULL
-      particle$refresh_devices()
+      sdds$refresh_devices()
     }
 
     ## get experiment devices from DB =========
@@ -197,7 +197,7 @@ data_server <- function(
       req(values$current_exp_id)
       req(is_owner_or_admin())
       values$refresh_exp_devices
-      all_devices <- particle$get_all_devices() |>
+      all_devices <- sdds$get_all_devices() |>
         rename("core_name" = "name")
       log_info(ns = ns, user_msg = "Fetching experiment devices")
       # safely call function
@@ -206,16 +206,29 @@ data_server <- function(
         left_join(all_devices, by = c("core_id" = "coreid")) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
-      # tell sdds which core ids are accessible
-      if (!is.null(out$result)) {
-        out$result |>
+      # success?
+      result <- out$result
+      if (!is.null(result)) {
+        # store trees and values in the cache
+        out <- result |>
+          sddsParticle:::cache_trees() |>
+          try_catch_cnds()
+        out |> log_cnds(ns = ns)
+        out <- result |>
+          mutate(coreid = core_id) |>
+          sddsParticle:::cache_treevalues() |>
+          try_catch_cnds()
+        out |> log_cnds(ns = ns)
+        # tell sdds which core ids are accessible
+        result |>
           filter(control_exp_id == values$current_exp_id) |>
           pull(core_id) |>
           experiment_core_ids()
       } else {
+        # no core ids are accessible
         experiment_core_ids(c())
       }
-      return(out$result)
+      return(result)
     })
 
     ## load experiment device ========
@@ -293,7 +306,7 @@ data_server <- function(
     ## get registered devices ====
     get_registered_devices <- reactive({
       req(get_group())
-      all_devices <- particle$get_all_devices()
+      all_devices <- sdds$get_all_devices()
       log_info(ns = ns, user_msg = "Fetching registered devices")
       # safely call function
       out <-
