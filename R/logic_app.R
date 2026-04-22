@@ -140,11 +140,14 @@ get_logs_plot_in_app <- function(logs, devices, ..., legend_position) {
     ml_plot_logs(...)
 
   # legend position
-  if (legend_position == "bottom") {
-    p <- p +
-      theme(legend.position = "bottom", legend.direction = "vertical")
-  } else if (legend_position == "hide") {
+  if (legend_position == "hide") {
     p <- p + theme(legend.position = "none")
+  } else {
+    p <- p + theme(legend.position = legend_position)
+    if (legend_position %in% c("bottom", "top")) {
+      p <- p +
+        theme(legend.direction = "vertical")
+    }
   }
 
   return(p)

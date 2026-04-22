@@ -45,7 +45,7 @@ logs_plot_server <- function(
     ## get devices
     get_log_devices_for_table <- reactive({
       req(data$has_exp_loaded())
-      req(data$get_logs())
+      validate(need(data$get_logs(), "No logs available."))
       out <- data$get_logs() |>
         count(device, label) |>
         select(
@@ -63,10 +63,8 @@ logs_plot_server <- function(
       "log_devices",
       get_data = get_log_devices_for_table,
       id_column = "Device",
-      selection = "multiple",
       # view & scrolling
-      allow_view_all = TRUE,
-      initial_page_length = -1,
+      paging = FALSE,
       dom = "t"
     )
 
@@ -82,7 +80,7 @@ logs_plot_server <- function(
     ## get traces
     get_log_traces_for_table <- reactive({
       req(data$has_exp_loaded())
-      req(data$get_logs())
+      validate(need(data$get_logs(), "No logs available."))
       out <- data$get_logs() |>
         ml_summarize_logs() |>
         select(
@@ -108,11 +106,7 @@ logs_plot_server <- function(
       columnDefs = list(
         list(visible = FALSE, targets = 0:1)
       ),
-      selection = "multiple",
-      # view & scrolling
-      allow_view_all = TRUE,
-      initial_page_length = -1,
-      scrollY = "200px",
+      paging = FALSE,
       dom = "ft"
     )
 
@@ -227,7 +221,8 @@ logs_plot_server <- function(
 
     output$data_plot <- renderPlot(
       generate_plot(),
-      height = eventReactive(values$refresh_data_plot, input$plot_height)
+      res = 96
+      #height = eventReactive(values$refresh_data_plot, input$plot_height)
     )
 
     ## zoom ========
@@ -443,16 +438,78 @@ logs_plot_server <- function(
 logs_plot_ui <- function(id, plot_height = 500) {
   ns <- NS(id)
 
-  tagList(
-    # plot box ------
-    shinydashboard::box(
-      title = "Data Plot",
-      width = 8,
-      status = "info",
-      solidHeader = TRUE,
-      collapsible = TRUE,
-      div(
-        style = paste0("min-height: ", plot_height, "px;"),
+  bslib::layout_sidebar(
+    padding = 0,
+    # DATA SELECTION =====
+    sidebar = bslib::sidebar(
+      position = "left",
+      width = "400",
+      fillable = TRUE,
+      bslib::card(
+        full_screen = TRUE,
+        max_height = 200,
+        padding = 0,
+        module_selector_table_ui(ns("log_devices"))
+      ),
+      bslib::card(
+        full_screen = TRUE,
+        min_height = 300,
+        padding = 0,
+        module_selector_table_ui(ns("log_traces"))
+      )
+    ),
+    bslib::layout_sidebar(
+      fill = TRUE,
+      # PLOT OPTIONS ================
+      sidebar = bslib::sidebar(
+        position = "right",
+        title = "Plot Options",
+        checkboxInput(ns("show_errors"), "Errors:", value = FALSE),
+        checkboxInput(ns("show_points"), "Show points:", value = FALSE),
+        #checkboxInput(ns("show_outliers"), "Outliers:", value = TRUE),
+        #checkboxInput(ns("overlay_exps"), Overlay Exps:", value = FALSE),
+        radioButtons(
+          ns("time_axis"),
+          "Time axis:",
+          choices = c("date & time" = "datetime", "duration" = "duration"),
+          selected = "datetime",
+          inline = TRUE
+        ),
+        selectInput(
+          ns("color_aes"),
+          "Color:",
+          choices = c(
+            "None" = NA_character_,
+            "Device" = "device",
+            "Label" = "label"
+          ),
+          selected = "label"
+        ),
+        ## implement linetype and panel (for multi experiment views)
+        #   selectInput(
+        #     ns("linetype_aes"),
+        #     "Linetyep:",
+        #     choices = c("None" = NA_character_, "Device" = "device", "Label" = "label"),
+        #     selected = NA_character_
+        #   ),
+        selectInput(
+          ns("legend_position"),
+          "Legend:",
+          choices = c("right", "bottom", "top", "left", "hide"),
+          selected = "top"
+        ),
+        numericInput(
+          ns("font_size"),
+          "Font Size:",
+          value = 18,
+          min = 6,
+          step = 1
+        )
+      ),
+
+      # PLOT CONTROLS =============
+      bslib::card_body(
+        min_height = 300,
         div(
           id = ns("data_plot_actions"),
           fluidRow(
@@ -526,196 +583,58 @@ logs_plot_ui <- function(id, plot_height = 500) {
             )
           )
         ),
-        div(
-          id = ns("data_plot_messages"),
-          h3(htmlOutput(ns("data_plot_message")))
-        ),
-        div(
-          id = ns("data_plot_div"),
-          plotOutput(
-            ns("data_plot"),
-            height = "100%",
-            dblclick = ns("data_plot_dblclick"),
-            brush = brushOpts(
-              id = ns("data_plot_brush"),
-              delayType = "debounce",
-              direction = "x",
-              resetOnNew = TRUE
-            )
-          ) |>
-            shinycssloaders::withSpinner(
-              type = 5,
-              proxy.height = paste0(plot_height - 50, "px")
-            )
-        )
-      )
-    ),
 
-    # devices ----
-    div(
-      id = ns("devices_box"),
-      shinydashboard::box(
-        title = "Select Devices",
-        width = 4,
-        status = "info",
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        module_selector_table_ui(ns("log_devices"))
-      )
-    ),
-
-    # variables box ----
-    div(
-      id = ns("traces_box"),
-      shinydashboard::box(
-        title = "Select data",
-        width = 4,
-        status = "info",
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        module_selector_table_ui(ns("log_traces"))
-        # footer = div(
-        #   actionButton(
-        #     ns("traces_refresh"),
-        #     label = "Re-plot",
-        #     icon = icon("sync")
-        #   ) |>
-        #     add_tooltip("Refresh plot with new data trace selection.")
-        # )
-      )
-    ),
-
-    # options box -----
-    div(
-      id = ns("options_box"),
-      shinydashboard::box(
-        title = "Plot Options",
-        width = 4,
-        status = "info",
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        fluidRow(
-          h4("Errors:") |> column(width = 4),
-          checkboxInput(ns("show_errors"), NULL, value = FALSE) |>
-            column(width = 2),
-          h4("Show points:") |> column(width = 4),
-          checkboxInput(ns("show_points"), NULL, value = FALSE) |>
-            column(width = 2)
-        ),
-        # fluidRow(
-        #   h4("Outliers:") |> column(width = 4),
-        #   checkboxInput(ns("show_outliers"), NULL, value = TRUE) |>
-        #     column(width = 2),
-        #   h4("Overlay Exps:") |> column(width = 4),
-        #   checkboxInput(ns("overlay_exps"), NULL, value = FALSE) |>
-        #     column(width = 2)
-        # ),
-        fluidRow(
-          h4("Time axis:") |> column(width = 4),
-          radioButtons(
-            ns("time_axis"),
-            NULL,
-            choices = c("date & time" = "datetime", "duration" = "duration"),
-            selected = "datetime",
-            inline = TRUE
-          ) |>
-            column(width = 8)
-        ),
-        fluidRow(
-          h4("Color:") |> column(width = 4),
-          selectInput(
-            ns("color_aes"),
-            NULL,
-            choices = c(
-              "None" = NA_character_,
-              "Device" = "device",
-              "Label" = "label"
-            ),
-            selected = "label"
-          ) |>
-            column(width = 8)
-        ),
-        # implement linetype and panel (for multi experiment views)
-        #  fluidRow(
-        #   h4("Linetype:") |> column(width = 4),
-        #   selectInput(
-        #     ns("linetype_aes"),
-        #     NULL,
-        #     choices = c("None" = NA_character_, "Device" = "device", "Label" = "label"),
-        #     selected = NA_character_
-        #   ) |>
-        #     column(width = 8)
-        # ),
-        fluidRow(
-          h4("Plot height:") |> column(width = 4),
-          numericInput(
-            ns("plot_height"),
-            NULL,
-            value = plot_height,
-            min = 100,
-            step = 50
-          ) |>
-            column(width = 8)
-        ),
-        fluidRow(
-          h4("Legend:") |> column(width = 4),
-          selectInput(
-            ns("legend_position"),
-            NULL,
-            choices = c("right", "bottom", "hide"),
-            selected = "right"
-          ) |>
-            column(width = 8)
-        ),
-        fluidRow(
-          h4("Font Size:") |> column(width = 4),
-          numericInput(ns("font_size"), NULL, value = 18, min = 6, step = 1) |>
-            column(width = 8)
-        )
-        # footer = actionButton(
-        #   ns("options_refresh"),
-        #   label = "Re-plot",
-        #   icon = icon("sync")
-        # ) |>
-        #   add_tooltip("Refresh plot with new plot settings.") |>
-        #   shinyjs::disabled()
-      )
-    ),
-
-    # summary box -----
-    div(
-      id = ns("summary_box"),
-      shinydashboard::box(
-        title = "Summary of Plotted Data",
-        width = 12,
-        status = "info",
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        numericInput(
-          ns("digits"),
-          label = NULL,
-          value = 2,
-          step = 1
+        # PLOT ITSELF ===========
+        plotOutput(
+          ns("data_plot"),
+          dblclick = ns("data_plot_dblclick"),
+          brush = brushOpts(
+            id = ns("data_plot_brush"),
+            delayType = "debounce",
+            direction = "x",
+            resetOnNew = TRUE
+          )
         ) |>
-          add_tooltip("Enter number of digits to display."),
-        tableOutput(ns("summary_table"))
+          shinycssloaders::withSpinner() |>
+          bslib::as_fill_carrier()
       )
-    ) |>
-      shinyjs::hidden(),
-
-    # data box ----
-
-    div(
-      id = ns("data_box"),
-      shinydashboard::box(
-        title = "All Plotted Data",
-        width = 12,
-        status = "info",
-        solidHeader = TRUE,
-        collapsible = TRUE,
-        DT::dataTableOutput(ns("data_table"))
-      )
-    ) |>
-      shinyjs::hidden()
+    )
   )
+
+  #   # summary box -----
+  #   div(
+  #     id = ns("summary_box"),
+  #     shinydashboard::box(
+  #       title = "Summary of Plotted Data",
+  #       width = 12,
+  #       status = "info",
+  #       solidHeader = TRUE,
+  #       collapsible = TRUE,
+  #       numericInput(
+  #         ns("digits"),
+  #         label = NULL,
+  #         value = 2,
+  #         step = 1
+  #       ) |>
+  #         add_tooltip("Enter number of digits to display."),
+  #       tableOutput(ns("summary_table"))
+  #     )
+  #   ) |>
+  #     shinyjs::hidden(),
+
+  #   # data box ----
+
+  #   div(
+  #     id = ns("data_box"),
+  #     shinydashboard::box(
+  #       title = "All Plotted Data",
+  #       width = 12,
+  #       status = "info",
+  #       solidHeader = TRUE,
+  #       collapsible = TRUE,
+  #       DT::dataTableOutput(ns("data_table"))
+  #     )
+  #   ) |>
+  #     shinyjs::hidden()
+  # )
 }
