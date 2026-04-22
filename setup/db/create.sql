@@ -75,6 +75,12 @@ CREATE TABLE experiment_devices (
   UNIQUE (exp_id, core_id)
 );
 
+-- Constraint making sure experiment_devices record always exists for control_exp_id in devices
+ALTER TABLE devices
+    ADD CONSTRAINT fk_control_exp_device
+    FOREIGN KEY (control_exp_id, core_id)
+    REFERENCES experiment_devices(exp_id, core_id);
+
 -- Table: device_snapshots
 
 DROP TABLE IF EXISTS device_snapshots CASCADE;
