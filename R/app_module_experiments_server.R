@@ -119,7 +119,9 @@ experiments_server <- function(
       req(data$has_exp_loaded())
       bslib::navset_card_pill(
         id = ns("tabset"),
-        selected = if (data$is_owner_or_admin()) {
+        selected = if (data$is_owner_or_admin() && data$is_unnamed()) {
+          "configuration"
+        } else if (data$is_owner_or_admin()) {
           isolate(data$get_screen())
         } else {
           "data"
@@ -295,6 +297,114 @@ experiments_server <- function(
     ## unlink device
     observeEvent(input$unlink_device, {
       data$unlink_device()
+      experiment_devices$deselect_all()
+    })
+
+    # unlinked devices ===========
+
+    ## prep unlinked devices for table
+    get_unlinked_devices_for_table <- reactive({
+      req(data$has_exp_loaded())
+      req(data$get_unlinked_devices())
+      # safely call function
+      out <- data$get_unlinked_devices() |>
+        get_unlinked_devices_for_table_in_app(
+          timezone = get_timezone(),
+          user_id = data$get_user_id()
+        ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      return(out$result)
+    })
+
+    ## setup unlinked devices selector table
+    unlinked_devices <- module_selector_table_server(
+      "unlinked_devices",
+      get_data = get_unlinked_devices_for_table,
+      id_column = "core_id",
+      # make id column invisible
+      columnDefs = list(
+        list(visible = FALSE, targets = 0)
+      ),
+      auto_reselect = FALSE,
+      paging = FALSE,
+      dom = "ft",
+      no_data_message = "There are no devices that are not already linked to this experiment."
+    )
+
+    ## unlinked evices modal
+    unlinked_devices_modal <- modalDialog(
+      title = h3("Link devices to experiment"),
+      bslib::card(
+        full_screen = TRUE,
+        class = "border-0",
+        min_height = 300,
+        module_selector_table_ui(ns("unlinked_devices"))
+      ),
+      footer = tagList(
+        actionButton(
+          ns("modal_add_device"),
+          "Link devices",
+          icon = icon("link"),
+          style = "border: 0;"
+        ) |>
+          add_tooltip(
+            "Link the selected device(s) to this experiment and try to put the experiment in control of them."
+          ) |>
+          shinyjs::disabled(),
+        modalButton("Close")
+      ),
+      easyClose = TRUE,
+      size = "l"
+    )
+
+    ## trigger modal
+    observeEvent(input$link_devices, {
+      data$refresh_unlinked_devices()
+      showModal(unlinked_devices_modal)
+    })
+
+    ## react to unlinked device selection
+    selected_unlinked <- reactiveVal(c())
+    observeEvent(
+      unlinked_devices$get_selected_ids(),
+      {
+        # update button
+        shinyjs::toggleState(
+          "modal_add_device",
+          condition = !is_empty(unlinked_devices$get_selected_ids())
+        )
+        updateActionButton(
+          inputId = "modal_add_device",
+          label = format_inline(
+            "Link {length(unlinked_devices$get_selected_ids())} device{?s}"
+          )
+        )
+        # warn about unclaimable devices
+        newly_selected <- setdiff(
+          unlinked_devices$get_selected_ids(),
+          selected_unlinked()
+        )
+        if (!is_empty(newly_selected)) {
+          device <- data$get_unlinked_devices() |>
+            filter(core_id == newly_selected)
+          if (!is.na(device$control_exp_id)) {
+            log_warning(
+              ns = ns,
+              user_msg = sprintf("Cannot control %s", device$core_name),
+              warning = "This device is currently in use by another experiment. You can link it to your experiment but will not be able to control it."
+            )
+          }
+        }
+        selected_unlinked(unlinked_devices$get_selected_ids())
+      },
+      ignoreNULL = FALSE
+    )
+
+    ## trigger save
+    observeEvent(input$modal_add_device, {
+      removeModal()
+      data$link_and_claim_devices(unlinked_devices$get_selected_ids())
     })
 
     # device control  ========

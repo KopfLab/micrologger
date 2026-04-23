@@ -134,7 +134,7 @@ generate_experiment_configuration_ui <- function(
         },
         bslib::card(
           padding = 0,
-          min_height = 300,
+          min_height = 320,
           bslib::layout_sidebar(
             sidebar = bslib::sidebar(
               position = "right",
@@ -283,7 +283,7 @@ generate_device_control_ui <- function(ns) {
               actionButton(
                 ns("zero"),
                 "Zero OD Reader",
-                icon = icon("zero")
+                icon = icon("0")
               ) |>
                 shinyjs::disabled(),
               spaces(),

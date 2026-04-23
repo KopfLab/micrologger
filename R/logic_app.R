@@ -58,7 +58,7 @@ get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
     )
 }
 
-# get experiemnt devices for table in app
+# get experiment devices for table in app
 get_experiment_devices_for_table_in_app <- function(
   experiment_devices,
   timezone,
@@ -83,6 +83,7 @@ get_experiment_devices_for_table_in_app <- function(
         TRUE ~ owner
       )
     ) |>
+    arrange(core_name) |>
     select(
       "core_id",
       Device = "core_name",
@@ -98,19 +99,31 @@ get_experiment_devices_for_table_in_app <- function(
 
 
 # get devices for table in app
-get_devices_for_table_in_app <- function(devices, timezone, user_id) {
+get_unlinked_devices_for_table_in_app <- function(devices, timezone, user_id) {
   devices |>
     mutate(
       last_heard = .data$last_heard |>
         lubridate::with_tz(timezone) |>
         format("%b %d %Y %H:%M:%S")
     ) |>
-    mutate(version = sddsParticle:::version_value_to_text(.data$version)) |>
     simplify_owner(user_id = user_id) |>
+    mutate(
+      version = sddsParticle:::version_value_to_text(.data$version),
+      name = case_when(
+        is.na(control_exp_id) ~ "Not in use",
+        TRUE ~ name
+      ),
+      owner = case_when(
+        is_na(control_exp_id) ~ "None",
+        TRUE ~ owner
+      )
+    ) |>
+    arrange(!is.na(control_exp_id), core_name) |>
     select(
       "core_id",
-      Name = "name",
-      "In use by" = "owner",
+      Device = "core_name",
+      "Current experiment" = "name",
+      "Current controller" = "owner",
       Type = "type",
       Version = "version",
       `Last heard from` = "last_heard",

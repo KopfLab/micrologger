@@ -29,6 +29,7 @@ data_server <- function(
       has_exp_device_selected = FALSE,
       selected_exp_device_core_id = NULL,
       selected_exp_device = NULL,
+      refresh_unlinked_devices = 0,
       refresh_logs = 0
     )
 
@@ -123,6 +124,11 @@ data_server <- function(
     # check if current exp is owned by user or user is an admin
     is_owner_or_admin <- reactive({
       identical(values$current_exp_owner, TRUE) || is_admin()
+    })
+
+    # check if current experiment has undefined name
+    is_unnamed <- reactive({
+      is.na(values$current_exp$name) || !nzchar(values$current_exp$name)
     })
 
     # check if exp is recording
@@ -279,8 +285,29 @@ data_server <- function(
       }
     }
 
+    ## manage experiment devices =========
+
+    ## unlink core id from experiment (also makes sure it is released if necesasry)
+    unlink_device <- function() {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+      }
+      out <- ml_unlink_device_from_experiment(
+        exp_id = values$current_exp_id,
+        core_id = values$selected_exp_device_core_id
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (!is.null(out$result) && out$result >= 1) {
+        log_success(ns = ns, user_msg = "Device unlinked.")
+        refresh_exp_devices()
+      } else {
+        log_warning(ns = ns, user_msg = "Device could not be unlinked.")
+      }
+    }
+
     ## claim core id for expeirment
-    claim_device <- function() {
+    claim_device <- function(core_id = NULL) {
       if (!has_exp_loaded() || !values$has_exp_device_selected) {
         log_error(ns = ns, user_msg = "No experiment device selected")
       }
@@ -317,33 +344,22 @@ data_server <- function(
       }
     }
 
-    ## unlink core id from experiment (also makes sure it is released if necesasry)
-    unlink_device <- function() {
-      if (!has_exp_loaded() || !values$has_exp_device_selected) {
-        log_error(ns = ns, user_msg = "No experiment device selected")
-      }
-      out <- ml_unlink_device_from_experiment(
-        exp_id = values$current_exp_id,
-        core_id = values$selected_exp_device_core_id
-      ) |>
-        try_catch_cnds()
-      out |> log_cnds(ns = ns)
-      if (!is.null(out$result) && out$result >= 1) {
-        log_success(ns = ns, user_msg = "Device unlinked.")
-        refresh_exp_devices()
-      } else {
-        log_warning(ns = ns, user_msg = "Device could not be unlinked.")
-      }
+    # UNLINKED DEVICES ======
+
+    ## refresh unlinked devices ======
+    refresh_unlinked_devices <- function() {
+      values$refresh_unlinked_devices <- values$refresh_unlinked_devices + 1L
     }
 
-    # REGISTERED DEVICES ========
-
-    ## get registered devices ====
-    get_registered_devices <- reactive({
+    ## get unlinked devices ====
+    get_unlinked_devices <- reactive({
       req(get_group())
-      all_devices <- sdds$get_all_devices()
-      log_info(ns = ns, user_msg = "Fetching registered devices")
-      # safely call function
+      values$refresh_unlinked_devices
+      all_devices <- isolate(sdds$get_all_devices()) |>
+        rename("core_name" = "name")
+      log_info(ns = ns, user_msg = "Fetching unlinked devices")
+
+      # get registered devices
       out <-
         ml_get_devices(group_id = get_group()) |>
         left_join(all_devices, by = c("core_id" = "coreid")) |>
@@ -352,8 +368,66 @@ data_server <- function(
       if (is.null(out$result) || nrow(out$result) == 0L) {
         return(NULL)
       }
-      return(out$result)
+      available_to_link <- out$result
+      already_linked <- isolate(get_exp_devices())
+      if (!is.null(already_linked) && nrow(already_linked) > 0) {
+        available_to_link <- available_to_link |>
+          anti_join(already_linked, by = "core_id")
+      }
+      return(available_to_link)
     })
+
+    ## link additional devices ======
+
+    ## link core ids to experiment (can provide multiple core_ids) and claim the ones that are not currently used by another experiment
+    link_and_claim_devices <- function(core_id) {
+      if (!has_exp_loaded()) {
+        log_error(ns = ns, user_msg = "No experiment loaded")
+      }
+      if (!is.character(core_id) || is_empty(core_id)) {
+        log_error(ns = ns, user_msg = "No device ID provided")
+      }
+
+      # link devices
+      out <- ml_link_devices_to_experiment(
+        exp_id = values$current_exp_id,
+        core_ids = core_id
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (is.null(out$result)) {
+        return()
+      }
+      n_linked <- out$result
+
+      # claim unclaimed devices
+      out <- get_unlinked_devices() |>
+        filter(core_id %in% !!core_id, is.na(control_exp_id)) |>
+        pull(core_id) |>
+        try_catch_cnds()
+      out |> log_cnds()
+      if (!is.null(out$result) && length(out$result) > 0) {
+        for (core_id in out$result) {
+          out <- ml_claim_device_for_experiment(
+            exp_id = values$current_exp_id,
+            core_id = core_id
+          ) |>
+            try_catch_cnds()
+          out |> log_cnds(ns = ns)
+        }
+      }
+
+      # final message
+      log_success(
+        ns = ns,
+        user_msg = format_inline(
+          "{n_linked} Device{?s} {?was/were} linked to this experiment."
+        )
+      )
+
+      # refresh devices
+      refresh_exp_devices()
+    }
 
     # LOGS ======
 
@@ -410,6 +484,7 @@ data_server <- function(
         values$current_exp
       }),
       is_owner_or_admin = is_owner_or_admin,
+      is_unnamed = is_unnamed,
       is_exp_recording = is_exp_recording,
       start_exp_recording = start_exp_recording,
       stop_exp_recording = stop_exp_recording,
@@ -425,11 +500,13 @@ data_server <- function(
         values$selected_exp_device
       }),
       save_exp_device_label = save_exp_device_label,
+      link_and_claim_devices = link_and_claim_devices,
+      unlink_device = unlink_device,
       claim_device = claim_device,
       release_device = release_device,
-      unlink_device = unlink_device,
-      ## registered devices ====
-      get_registered_devices = get_registered_devices,
+      # unlinked devices =====
+      refresh_unlinked_devices = refresh_unlinked_devices,
+      get_unlinked_devices = get_unlinked_devices,
       ## logs =====
       refresh_logs = refresh_logs,
       get_logs = get_logs

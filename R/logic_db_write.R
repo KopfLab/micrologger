@@ -277,7 +277,7 @@ ml_unlink_device_from_experiment <- function(
 
   # information
   cli_alert_success("{deleted} link{?s} deleted.")
-  return(invisible(NULL))
+  return(deleted)
 }
 
 #' Claim device for a paritcular experiment
