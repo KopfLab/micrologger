@@ -1,6 +1,6 @@
 {
-    "name": "sddsData",
-    "event": "sddsData",
+    "name": "microloggerData",
+    "event": "microloggerData",
     "url": "https://{{API-ID}}.execute-api.us-east-1.amazonaws.com/Prod/micrologger",
     "requestType": "POST",
     "mydevices": true,
