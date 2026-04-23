@@ -129,6 +129,9 @@ generate_experiment_configuration_ui <- function(
           actionButton(ns("exp_name_save"), "Save", icon = icon("floppy-disk"))
         ),
         h4("Devices:"),
+        if (!exp$archived && exp$recording) {
+          "Pause recording to add/remove linked devices."
+        },
         bslib::card(
           padding = 0,
           min_height = 300,
@@ -146,12 +149,23 @@ generate_experiment_configuration_ui <- function(
                 ),
               if (!exp$archived && !exp$recording) {
                 actionButton(
-                  ns("link_device"),
-                  "Link device",
+                  ns("link_devices"),
+                  "Link devices",
                   icon = icon("plus")
                 ) |>
                   add_tooltip(
-                    "Link a(nother) device to this experiment. You cannot do this while the experiment is recording."
+                    "Link additional device(s) to this experiment. You cannot do this while the experiment is recording."
+                  )
+              },
+              if (!exp$archived && !exp$recording) {
+                actionButton(
+                  ns("unlink_device"),
+                  "Unlink device",
+                  icon = icon("link-slash")
+                ) |>
+                  shinyjs::disabled() |>
+                  add_tooltip(
+                    "Unlink the selected device from this experiment. You cannot do this while the experiment is recording."
                   )
               },
               if (!exp$archived && !exp$recording) {
@@ -267,6 +281,13 @@ generate_device_control_ui <- function(ns) {
               "Quick actions",
               icon = icon("bolt-lightning"),
               actionButton(
+                ns("zero"),
+                "Zero OD Reader",
+                icon = icon("zero")
+              ) |>
+                shinyjs::disabled(),
+              spaces(),
+              actionButton(
                 ns("start_stirrer"),
                 "Start stirring",
                 icon = icon("play")
@@ -307,73 +328,6 @@ generate_device_control_ui <- function(ns) {
       bslib::card_footer("Select structure entry to change values.")
     )
   )
-
-  #   bslib::accordion(
-  #     id = ns("device_control_accordion"),
-  #     multiple = TRUE,
-  #     # Devices
-  #     bslib::accordion_panel(
-  #       "Devices under control of this experiment",
-  #       icon = icon("microchip"),
-  #       bslib::card(
-  #         full_screen = TRUE,
-  #         id = "devices_card",
-  #         bslib::layout_sidebar(
-  #           sidebar = bslib::sidebar(
-  #             position = "left",
-  #             width = "160",
-  #             sddsParticle::sdds_ui_devices_actions("sdds")
-  #           ),
-  #           sddsParticle::sdds_ui_devices_table("sdds")
-  #         ),
-  #         bslib::card_footer("Select the devices you want to work with.")
-  #       )
-  #     ),
-
-  #     # Common actions
-  #     bslib::accordion_panel(
-  #       "Common actions",
-  #       icon = icon("bolt-lightning"),
-  #       actionButton(
-  #         ns("start_stirrer"),
-  #         "Start stirring",
-  #         icon = icon("play")
-  #       ) |>
-  #         shinyjs::disabled(),
-  #       actionButton(
-  #         ns("stop_stirrer"),
-  #         "Stop stirring",
-  #         icon = icon("stop")
-  #       ) |>
-  #         shinyjs::disabled(),
-  #       actionButton(
-  #         ns("change_stirrer"),
-  #         "Change speed",
-  #         icon = icon("gauge")
-  #       ) |>
-  #         shinyjs::disabled(),
-  #       actionButton(ns("save"), "Save state", icon = icon("floppy-disk")) |>
-  #         shinyjs::disabled()
-  #     ),
-
-  #     # Data structures
-  #     bslib::accordion_panel(
-  #       "Data structures",
-  #       icon = icon("folder-tree"),
-  #       bslib::card(
-  #         bslib::layout_sidebar(
-  #           sidebar = bslib::sidebar(
-  #             position = "left",
-  #             width = "160",
-  #             sddsParticle::sdds_ui_structures_actions("sdds")
-  #           ),
-  #           sddsParticle::sdds_ui_structures_table("sdds"),
-  #         ),
-  #         bslib::card_footer("Select structure entry to change values.")
-  #       )
-  #     )
-  #   )
-  # )
 }
 
 # helpers =============

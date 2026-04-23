@@ -20,6 +20,7 @@ data_server <- function(
       refresh_experiments = 0,
       has_any_exps = FALSE,
       has_exp_loaded = FALSE,
+      current_exp_screen = "data",
       current_exp_id = NULL,
       current_exp = NULL,
       current_exp_owner = FALSE,
@@ -103,6 +104,20 @@ data_server <- function(
 
     has_exp_loaded <- reactive({
       values$has_exp_loaded
+    })
+
+    # keep track of which screen is loaded
+    load_screen <- function(screen) {
+      if (!screen %in% c("data", "configuration", "device_ctrl")) {
+        cli_warn("invalid screen {.field {screen}}")
+      }
+      if (!identical(values$current_exp_screen, screen)) {
+        values$current_exp_screen <- screen
+      }
+    }
+
+    get_screen <- reactive({
+      values$current_exp_screen
     })
 
     # check if current exp is owned by user or user is an admin
@@ -196,6 +211,7 @@ data_server <- function(
       req(values$has_exp_loaded)
       req(values$current_exp_id)
       req(is_owner_or_admin())
+      req(values$current_exp_screen %in% c("configuration", "device_ctrl"))
       values$refresh_exp_devices
       all_devices <- sdds$get_all_devices() |>
         rename("core_name" = "name")
@@ -257,7 +273,7 @@ data_server <- function(
       ) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
-      if (out$result == 1) {
+      if (!is.null(out$result) && out$result == 1) {
         log_success(ns = ns, user_msg = "Device label updated.")
         refresh_exp_devices()
       }
@@ -278,7 +294,7 @@ data_server <- function(
         log_success(ns = ns, user_msg = "Device claimed.")
         refresh_exp_devices()
       } else {
-        log_success(ns = ns, user_msg = "Device could not be claimed.")
+        log_warning(ns = ns, user_msg = "Device could not be claimed.")
       }
     }
 
@@ -297,7 +313,26 @@ data_server <- function(
         log_success(ns = ns, user_msg = "Device released.")
         refresh_exp_devices()
       } else {
-        log_success(ns = ns, user_msg = "Device could not be released.")
+        log_warning(ns = ns, user_msg = "Device could not be released.")
+      }
+    }
+
+    ## unlink core id from experiment (also makes sure it is released if necesasry)
+    unlink_device <- function() {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+      }
+      out <- ml_unlink_device_from_experiment(
+        exp_id = values$current_exp_id,
+        core_id = values$selected_exp_device_core_id
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (!is.null(out$result) && out$result >= 1) {
+        log_success(ns = ns, user_msg = "Device unlinked.")
+        refresh_exp_devices()
+      } else {
+        log_warning(ns = ns, user_msg = "Device could not be unlinked.")
       }
     }
 
@@ -333,6 +368,7 @@ data_server <- function(
     get_logs <- reactive({
       req(values$has_exp_loaded)
       req(values$current_exp_id)
+      req(values$current_exp_screen == "data")
       values$refresh_logs
       log_info(ns = ns, user_msg = "Fetching experiment logs")
       # safely call function
@@ -367,6 +403,8 @@ data_server <- function(
       has_exp_loaded = has_exp_loaded,
       add_exp = add_exp,
       load_exp = load_exp,
+      load_screen = load_screen,
+      get_screen = get_screen,
       save_exp = save_exp,
       get_current_exp = reactive({
         values$current_exp
@@ -389,6 +427,7 @@ data_server <- function(
       save_exp_device_label = save_exp_device_label,
       claim_device = claim_device,
       release_device = release_device,
+      unlink_device = unlink_device,
       ## registered devices ====
       get_registered_devices = get_registered_devices,
       ## logs =====

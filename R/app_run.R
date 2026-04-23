@@ -99,7 +99,10 @@ ml_run_gui <- function(
     ui = ui,
     server = server,
     # onstart required to read the particle stream!
-    onStart = sddsParticle::sdds_onstart(token = token),
+    onStart = sddsParticle::sdds_onstart(
+      token = token,
+      event = "microloggerData"
+    ),
     options = options,
     enableBookmarking = enableBookmarking,
     uiPattern = uiPattern

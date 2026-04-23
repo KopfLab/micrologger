@@ -13,7 +13,6 @@ experiments_server <- function(
     # reactive values =======
     values <- reactiveValues(
       refresh_experiments = 0,
-      experiment_tab = "data",
       new_exp_id = NULL,
       current_exp_id = NULL,
       current_exp = NULL,
@@ -77,7 +76,7 @@ experiments_server <- function(
     ## reload table --> select new experiment if there is one
     observeEvent(experiments$is_table_reloaded(), {
       req(values$new_exp_id)
-      values$experiment_tab <- "configuration"
+      data$load_screen("configuration")
       experiments$select_rows(values$new_exp_id)
       values$new_exp_id <- NULL
     })
@@ -100,13 +99,13 @@ experiments_server <- function(
     observe(
       {
         data$load_exp(experiments$get_selected_ids()[1])
-        if (isolate(data$has_exp_loaded())) {
-          if (isolate(values$experiment_tab) == "device_ctrl") {
-            isolate(data$get_exp_devices())
-          } else if (isolate(values$experiment_tab) == "data") {
-            isolate(data$get_logs())
+        isolate({
+          if (data$has_exp_loaded()) {
+            # these will only run if the correct screen is selected
+            data$get_exp_devices()
+            data$get_logs()
           }
-        }
+        })
       },
       priority = 50
     )
@@ -121,7 +120,7 @@ experiments_server <- function(
       bslib::navset_card_pill(
         id = ns("tabset"),
         selected = if (data$is_owner_or_admin()) {
-          isolate(values$experiment_tab)
+          isolate(data$get_screen())
         } else {
           "data"
         },
@@ -145,14 +144,13 @@ experiments_server <- function(
     })
 
     ## update experiment tab
-    observeEvent(input$tabset, {
-      values$experiment_tab <- input$tabset
-      if (values$experiment_tab == "device_ctrl") {
-        data$get_exp_devices()
-      } else if (values$experiment_tab == "data") {
-        data$get_logs()
-      }
-    })
+    observeEvent(
+      input$tabset,
+      {
+        data$load_screen(input$tabset)
+      },
+      priority = 1000
+    )
 
     ## save name
     observeEvent(input$exp_name_save, {
@@ -234,12 +232,19 @@ experiments_server <- function(
 
         # disable if nothing is loaded
         if (!data$has_exp_loaded()) {
-          shinyjs::disable("link_device")
+          shinyjs::disable("link_devices")
+          shinyjs::disable("unlink_device")
           shinyjs::disable("claim_device")
           shinyjs::disable("release_device")
           shinyjs::hide("device_label_div")
           return()
         }
+
+        # link device
+        shinyjs::toggleState(
+          "link_devices",
+          condition = !data$is_exp_recording()
+        )
 
         # label input
         exp_device_selected <- !is_empty(experiment_devices$get_selected_ids())
@@ -253,12 +258,14 @@ experiments_server <- function(
           shinyjs::hide("device_label_div")
         }
 
-        # claim/release device
+        # nothing selected or recording?
         if (!data$has_exp_devices_selected() || data$is_exp_recording()) {
+          shinyjs::disable("unlink_device")
           shinyjs::disable("claim_device")
           shinyjs::disable("release_device")
           return()
         }
+        shinyjs::enable("unlink_device") # always available whether device is claimed or unclaimed
         control_exp_id <- data$get_selected_exp_device()$control_exp_id
         shinyjs::toggleState("claim_device", condition = is.na(control_exp_id))
         shinyjs::toggleState(
@@ -285,11 +292,17 @@ experiments_server <- function(
       data$release_device()
     })
 
+    ## unlink device
+    observeEvent(input$unlink_device, {
+      data$unlink_device()
+    })
+
     # device control  ========
 
     # show data structure and common actions and disable/enable common actions
     observeEvent(sdds$devices$get_selected_ids(), {
       device_selected <- !is_empty(sdds$devices$get_selected_ids())
+      shinyjs::toggleState("zero", condition = device_selected)
       shinyjs::toggleState("start_stirrer", condition = device_selected)
       shinyjs::toggleState("stop_stirrer", condition = device_selected)
       shinyjs::toggleState(
@@ -310,6 +323,10 @@ experiments_server <- function(
     })
 
     ## custom actions
+    observeEvent(
+      input$zero,
+      sdds$edit_structure("sensor.action", value = "zero")
+    )
     observeEvent(
       input$start_stirrer,
       sdds$edit_structure("stirrer.action", value = "start")

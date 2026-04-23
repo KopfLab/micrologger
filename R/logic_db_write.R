@@ -234,10 +234,11 @@ ml_link_devices_to_experiment <- function(
 
 #' Remove experiment devices
 #'
+#' @param core_id can be multiple ids
 #' @export
-ml_unlink_devices_from_experiment <- function(
+ml_unlink_device_from_experiment <- function(
   exp_id,
-  core_ids,
+  core_id,
   con = db()
 ) {
   # safety checks
@@ -246,22 +247,31 @@ ml_unlink_devices_from_experiment <- function(
       !missing(exp_id) && is_scalar_integerish(exp_id),
       "must be a single exp_id"
     )
-  core_ids |>
+  core_id |>
     check_arg(
-      !missing(core_ids) && is_character(core_ids),
+      !missing(core_id) && is_character(core_id),
       "must be a character vector"
     )
 
   # information
   cli_alert_info(
-    "Unlinking {qty(core_ids)}{.field device{?s}} {col_blue(core_ids)} from {.field experiment} {col_magenta(exp_id)}"
+    "Unlinking {qty(core_id)}{.field device{?s}} {col_blue(core_id)} from {.field experiment} {col_magenta(exp_id)}"
   )
 
+  # make sure device(s) are not controlled by the experiment
+  sql <- sprintf(
+    "UPDATE devices SET control_exp_id = NULL WHERE core_id IN (%s) AND control_exp_id = %s",
+    to_sql(core_id),
+    to_sql(exp_id)
+  )
+  sql |> run_sql(con)
+
+  # delete experiment device links
   deleted <-
     sprintf(
       "DELETE FROM experiment_devices WHERE exp_id = %s AND core_id IN (%s)",
       to_sql(exp_id),
-      to_sql(core_ids)
+      to_sql(core_id)
     ) |>
     run_sql(con)
 
@@ -327,7 +337,7 @@ ml_release_device_from_experiment <- function(exp_id, core_id, con = db()) {
     "Freeing {.field device} {col_blue(core_id)} from {.field experiment} {col_magenta(exp_id)}"
   )
 
-  # claim device
+  # release device
   sql <- sprintf(
     "UPDATE devices SET control_exp_id = NULL WHERE core_id = %s AND control_exp_id = %s",
     to_sql(core_id),
