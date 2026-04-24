@@ -49,7 +49,7 @@ ml_server <- function(
     # data module
     data <- data_server(
       "data",
-      sdds = sdds,
+      token,
       experiment_core_ids = experiment_core_ids,
       get_timezone = reactive(input$timezone),
       get_user_id = reactive({

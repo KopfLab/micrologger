@@ -1,7 +1,7 @@
 # data server taking care loading data only as needed
 data_server <- function(
   id,
-  sdds,
+  particle_token,
   experiment_core_ids,
   get_timezone,
   get_user_id,
@@ -61,7 +61,6 @@ data_server <- function(
       values$current_exp_id <- NULL
       values$has_exp_device_selected <- FALSE
       values$selected_exp_device_core_id <- NULL
-      sdds$refresh_devices()
     }
 
     ## add experiment =======
@@ -201,31 +200,48 @@ data_server <- function(
       }
     }
 
+    # PARTICLE DEVICES ======
+
+    ## get particle devices ============
+
+    # get devies in app
+    get_particle_devices <- reactive({
+      values$refresh_exp_devices
+      log_info(ns = ns, user_msg = "Fetching latest device statuses")
+      out <-
+        sddsParticle::particle_get_device_info(token = particle_token) |>
+        # turn last heard into datetime (UTC), tz conversion happens in table prep, no need to trigger it here
+        mutate(last_heard = lubridate::ymd_hms(.data$last_heard, tz = "UTC")) |>
+        arrange(.data$name) |>
+        rename("core_id" = "coreid", "core_name" = "name") |>
+        try_catch_cnds(
+          error_value = tibble(core_id = character(), core_name = character())
+        )
+      out |> log_cnds(ns = ns)
+      return(out$result)
+    })
+
     # EXPERIMENT DEVICES ======
 
-    ## refresh experiment devices ======
+    ## refresh exp devices =========
     refresh_exp_devices <- function() {
       values$refresh_exp_devices <- values$refresh_exp_devices + 1L
       values$has_exp_device_selected <- FALSE
       values$selected_exp_device_core_id <- NULL
-      sdds$refresh_devices()
     }
 
     ## get experiment devices from DB =========
 
-    get_exp_devices <- reactive({
+    get_exp_devices_links <- reactive({
       req(values$has_exp_loaded)
       req(values$current_exp_id)
       req(is_owner_or_admin())
       req(values$current_exp_screen %in% c("configuration", "device_ctrl"))
       values$refresh_exp_devices
-      all_devices <- sdds$get_all_devices() |>
-        rename("core_name" = "name")
       log_info(ns = ns, user_msg = "Fetching experiment devices")
       # safely call function
       out <-
         ml_get_experiment_devices(exp_id = values$current_exp_id) |>
-        left_join(all_devices, by = c("core_id" = "coreid")) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
       # success?
@@ -253,6 +269,23 @@ data_server <- function(
       return(result)
     })
 
+    ## experiment device info =========
+
+    get_exp_devices_info <- reactive({
+      req(get_exp_devices_links())
+      req(values$current_exp_screen == "configuration")
+      all_devices <- get_particle_devices()
+      # safely call function
+      out <-
+        get_exp_devices_links() |>
+        left_join(all_devices, by = "core_id") |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      return(out$result)
+    })
+
+    ## get experiment device system info from paticle cloud
+
     ## load experiment device ========
 
     load_exp_device <- function(core_id) {
@@ -262,7 +295,7 @@ data_server <- function(
       } else {
         values$has_exp_device_selected <- TRUE
         values$selected_exp_device_core_id <- core_id
-        values$selected_exp_device <- get_exp_devices() |>
+        values$selected_exp_device <- get_exp_devices_info() |>
           filter(core_id == !!core_id)
       }
     }
@@ -355,21 +388,20 @@ data_server <- function(
     get_unlinked_devices <- reactive({
       req(get_group())
       values$refresh_unlinked_devices
-      all_devices <- isolate(sdds$get_all_devices()) |>
-        rename("core_name" = "name")
+      all_devices <- isolate(get_particle_devices())
       log_info(ns = ns, user_msg = "Fetching unlinked devices")
 
       # get registered devices
       out <-
         ml_get_devices(group_id = get_group()) |>
-        left_join(all_devices, by = c("core_id" = "coreid")) |>
+        left_join(all_devices, by = "core_id") |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
       if (is.null(out$result) || nrow(out$result) == 0L) {
         return(NULL)
       }
       available_to_link <- out$result
-      already_linked <- isolate(get_exp_devices())
+      already_linked <- isolate(get_exp_devices_info())
       if (!is.null(already_linked) && nrow(already_linked) > 0) {
         available_to_link <- available_to_link |>
           anti_join(already_linked, by = "core_id")
@@ -491,7 +523,8 @@ data_server <- function(
       archive_exp = archive_exp,
       ## exp devices =====
       refresh_exp_devices = refresh_exp_devices,
-      get_exp_devices = get_exp_devices,
+      get_exp_devices_links = get_exp_devices_links,
+      get_exp_devices_info = get_exp_devices_info,
       load_exp_device = load_exp_device,
       has_exp_devices_selected = reactive({
         values$has_exp_device_selected

@@ -102,7 +102,8 @@ experiments_server <- function(
         isolate({
           if (data$has_exp_loaded()) {
             # these will only run if the correct screen is selected
-            data$get_exp_devices()
+            data$get_exp_devices_links()
+            data$get_exp_devices_info()
             data$get_logs()
           }
         })
@@ -192,9 +193,9 @@ experiments_server <- function(
     ## prep experiment devices for table
     get_experiment_devices_for_table <- reactive({
       req(data$has_exp_loaded())
-      req(data$get_exp_devices())
+      req(data$get_exp_devices_info())
       # safely call function
-      out <- data$get_exp_devices() |>
+      out <- data$get_exp_devices_info() |>
         get_experiment_devices_for_table_in_app(
           timezone = get_timezone(),
           user_id = data$get_user_id()
@@ -452,96 +453,6 @@ experiments_server <- function(
     observeEvent(input$save, {
       sdds$edit_structure("SYSTEM.action", value = "saveState")
     })
-
-    # ## get avilable devices for table
-    # get_devices_for_table <- reactive({
-    #   # safety checks
-    #   validate(need(data$get_registered_devices(), "No devices."))
-    #   # safely call function
-    #   out <- data$get_registered_devices() |>
-    #     get_devices_for_table_in_app(
-    #       timezone = get_timezone(),
-    #       user_id = data$get_user_id()
-    #     ) |>
-    #     try_catch_cnds()
-    #   out |> log_cnds(ns = ns)
-    #   return(out$result)
-    # })
-
-    # ## add devices modal
-    # add_experiment_devices_modal <- modalDialog(
-    #   title = h3("Link devices to experiment"),
-    #   module_selector_table_ui(ns("all_devices")),
-    #   footer = tagList(
-    #     actionButton(
-    #       ns("modal_add_device"),
-    #       "Link selected",
-    #       icon = icon("plus"),
-    #       style = "border: 0;"
-    #     ) |>
-    #       add_tooltip(
-    #         "Link the selected devices."
-    #       ),
-    #     modalButton("Close")
-    #   ),
-    #   easyClose = TRUE,
-    #   size = "l"
-    # )
-
-    # ## setup group devices selector table
-    # all_devices <- callModule(
-    #   module_selector_table_server,
-    #   "all_devices",
-    #   get_data = get_devices_for_table,
-    #   id_column = "core_id",
-    #   # make id column invisible
-    #   columnDefs = list(
-    #     list(visible = FALSE, targets = 0)
-    #   ),
-    #   # view all & scrolling
-    #   allow_view_all = TRUE,
-    #   auto_reselect = FALSE,
-    #   initial_page_length = -1,
-    #   dom = "ft",
-    #   scrollX = TRUE
-    # )
-
-    # ## trigger modal
-    # observeEvent(input$add_experiment_devices, {
-    #   showModal(add_experiment_devices_modal)
-    # })
-
-    # ## reactive values for the linked devices
-    # linked <- reactiveValues(
-    #   refresh = 0L,
-    #   selected = c(),
-    # )
-
-    # ## select devices to link to experiment
-    # observeEvent(all_devices$get_selected_ids(), {
-    #   newly_selected <- setdiff(all_devices$get_selected_ids(), linked$selected)
-    #   if (is_empty(newly_selected)) {
-    #     return()
-    #   }
-    #   device <- get_devices() |>
-    #     filter(core_id == newly_selected) |>
-    #     simplify_owner(user_id = data$get_user_id())
-    #   if (!is.na(device$exp_id)) {
-    #     log_warning(
-    #       ns = ns,
-    #       user_msg = sprintf("Cannot use %s", device$name),
-    #       warning = sprintf(
-    #         "This device is currently in use by %s and cannot be linked to this experiment. Ask them to finish their experiment so the device becomes available again.",
-    #         device$owner
-    #       )
-    #     )
-    #     # reset to linked selected
-    #     all_devices$select_rows(ids = linked$selected)
-    #   } else {
-    #     # update selected
-    #     linked$selected <- all_devices$get_selected_ids()
-    #   }
-    # })
 
     # logs ========
     logs <- logs_plot_server("logs_plot", data)
