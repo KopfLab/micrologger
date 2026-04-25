@@ -167,6 +167,8 @@ data_server <- function(
       out |> log_cnds(ns = ns)
       if (identical(out$result, TRUE)) {
         log_success(ns = ns, user_msg = "Experiment is recording.")
+        # do this last for snapshot
+        send_recording_start_commands()
         refresh_exps()
       }
     }
@@ -175,6 +177,8 @@ data_server <- function(
       if (!has_exp_loaded()) {
         log_error(ns = ns, user_msg = "No experiment loaded")
       }
+      # do this first for snapshot
+      send_recording_stop_commands()
       out <- ml_experiment_stop_recording(exp_id = values$current_exp_id) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
@@ -220,6 +224,106 @@ data_server <- function(
       out |> log_cnds(ns = ns)
       return(out$result)
     })
+
+    ## send commands ot particle devices ==========
+
+    ## send commands to particle device
+    send_commands <- function(coreid, cmds) {
+      out <- coreid[1] |>
+        sddsParticle::particle_send_sdds_commands(
+          cmds = cmds,
+          token = particle_token
+        ) |>
+        try_catch_cnds(error_value = list(success = FALSE))
+      out |> log_cnds(ns = ns)
+      return(all(out$result$success))
+    }
+
+    ## start recording
+    send_recording_start_commands <- function() {
+      req(get_exp_devices_links())
+      req(experiment_core_ids())
+      core_ids <- experiment_core_ids()
+      n_links <- get_exp_devices_links() |> nrow()
+      if (length(core_ids) < n_links) {
+        log_warning(
+          ns = ns,
+          user_msg = "Not all devices under control",
+          warning = format_inline(
+            "{n_links - length(core_ids)} device{?s} {?is/are} NOT under control of this experiment and may not be recording."
+          )
+        )
+      }
+      success <- core_ids |>
+        purrr::map_lgl(
+          send_commands,
+          # fixME
+          cmds = c(
+            "SYSTEM.publishing.record=ON",
+            "SYSTEM.action=saveState",
+            "SYSTEM.action=sendSddsState"
+          )
+        )
+      if (all(success)) {
+        log_success(
+          ns = ns,
+          user_msg = format_inline(
+            "All devices under control of this experiment ({length(success)}) have started recording."
+          )
+        )
+      } else {
+        log_warning(
+          ns = ns,
+          user_msg = "Devices offline",
+          warning = format_inline(
+            "{sum(!success)}/{length(success)} of the {qty(sum(!success)}device{?s} under control of this experiment could not be reached and {?is/are} not recording. Check that {?it is/they are} online and pause + resume the experiment recording to try again."
+          )
+        )
+      }
+    }
+
+    ## stop recording
+    send_recording_stop_commands <- function() {
+      req(get_exp_devices_links())
+      req(experiment_core_ids())
+      core_ids <- experiment_core_ids()
+      n_links <- get_exp_devices_links() |> nrow()
+      if (length(core_ids) < n_links) {
+        log_warning(
+          ns = ns,
+          user_msg = "Not all devices under control",
+          warning = format_inline(
+            "{n_links - length(core_ids)} device{?s} {?is/are} NOT under control of this experiment and may still be recording."
+          )
+        )
+      }
+      success <- core_ids |>
+        purrr::map_lgl(
+          send_commands,
+          # fixME
+          cmds = c(
+            "SYSTEM.action=sendSddsState",
+            "SYSTEM.publishing.record=OFF",
+            "SYSTEM.action=saveState"
+          )
+        )
+      if (all(success)) {
+        log_success(
+          ns = ns,
+          user_msg = format_inline(
+            "All devices under control of this experiment ({length(success)}) have stopped recording."
+          )
+        )
+      } else {
+        log_warning(
+          ns = ns,
+          user_msg = "Devices offline",
+          warning = format_inline(
+            "{sum(!success)}/{length(success)} of the {qty(sum(!success)}device{?s} under control of this experiment could not be reached and may still be recording. Check that {?it is/they are} online and resume + pause the experiment recording to try to stop again."
+          )
+        )
+      }
+    }
 
     # EXPERIMENT DEVICES ======
 
@@ -275,13 +379,40 @@ data_server <- function(
       req(get_exp_devices_links())
       req(values$current_exp_screen == "configuration")
       all_devices <- get_particle_devices()
-      # safely call function
+      # safely get device links and join with all devices
       out <-
         get_exp_devices_links() |>
         left_join(all_devices, by = "core_id") |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)
-      return(out$result)
+      exp_devices <- out$result
+      if (is.null(exp_devices)) {
+        return(NULL)
+      }
+
+      # bring in system information (function returns out with result and conditions)
+      sys_info_out <-
+        sddsParticle::particle_get_and_parse_sdds_systems(
+          token = particle_token,
+          core_ids = exp_devices$core_id,
+          timezone = get_timezone()
+        )
+      sys_info_out |> log_cnds(ns = ns)
+      if (!is.null(sys_info_out$result)) {
+        exp_devices <- exp_devices |>
+          left_join(
+            sys_info_out$result |>
+              select(
+                any_of(c(
+                  "core_id" = "coreid",
+                  "publishing.record",
+                  "publishing.globalInterval_ms"
+                ))
+              ),
+            by = "core_id"
+          )
+      }
+      return(exp_devices)
     })
 
     ## get experiment device system info from paticle cloud

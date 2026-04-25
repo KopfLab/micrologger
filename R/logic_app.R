@@ -85,15 +85,19 @@ get_experiment_devices_for_table_in_app <- function(
     ) |>
     arrange(core_name) |>
     select(
-      "core_id",
-      Device = "core_name",
-      "Custom label" = "label",
-      "Current experiment" = "name",
-      "Current controller" = "owner",
-      Type = "type",
-      Version = "version",
-      `Last heard from` = "last_heard",
-      Connected = "connected"
+      any_of(c(
+        "core_id",
+        Device = "core_name",
+        "Custom label" = "label",
+        "Current experiment" = "name",
+        "Current controller" = "owner",
+        "Recording" = "publishing.record",
+        "Publish Interval" = "publishing.globalInterval_ms",
+        Type = "type",
+        Version = "version",
+        `Last heard from` = "last_heard",
+        Connected = "connected"
+      ))
     )
 }
 
