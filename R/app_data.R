@@ -386,7 +386,7 @@ data_server <- function(
         try_catch_cnds()
       out |> log_cnds(ns = ns)
       exp_devices <- out$result
-      if (is.null(exp_devices)) {
+      if (is.null(exp_devices) || nrow(exp_devices) == 0) {
         return(NULL)
       }
 

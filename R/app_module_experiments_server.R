@@ -193,7 +193,10 @@ experiments_server <- function(
     ## prep experiment devices for table
     get_experiment_devices_for_table <- reactive({
       req(data$has_exp_loaded())
-      req(data$get_exp_devices_info())
+      validate(need(
+        data$get_exp_devices_info(),
+        "No devices are linked to this experiment yet. Link a device."
+      ))
       # safely call function
       out <- data$get_exp_devices_info() |>
         get_experiment_devices_for_table_in_app(
