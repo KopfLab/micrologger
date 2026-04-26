@@ -241,10 +241,11 @@ data_server <- function(
 
     ## start recording
     send_recording_start_commands <- function() {
-      req(get_exp_devices_links())
-      req(experiment_core_ids())
-      core_ids <- experiment_core_ids()
       n_links <- get_exp_devices_links() |> nrow()
+      if (n_links == 0) {
+        return()
+      }
+      core_ids <- experiment_core_ids()
       if (length(core_ids) < n_links) {
         log_warning(
           ns = ns,
@@ -253,6 +254,9 @@ data_server <- function(
             "{n_links - length(core_ids)} device{?s} {?is/are} NOT under control of this experiment and may not be recording."
           )
         )
+      }
+      if (length(core_ids) == 0) {
+        return()
       }
       success <- core_ids |>
         purrr::map_lgl(
@@ -284,10 +288,11 @@ data_server <- function(
 
     ## stop recording
     send_recording_stop_commands <- function() {
-      req(get_exp_devices_links())
-      req(experiment_core_ids())
-      core_ids <- experiment_core_ids()
       n_links <- get_exp_devices_links() |> nrow()
+      if (n_links == 0) {
+        return()
+      }
+      core_ids <- experiment_core_ids()
       if (length(core_ids) < n_links) {
         log_warning(
           ns = ns,
@@ -296,6 +301,9 @@ data_server <- function(
             "{n_links - length(core_ids)} device{?s} {?is/are} NOT under control of this experiment and may still be recording."
           )
         )
+      }
+      if (length(core_ids) == 0) {
+        return()
       }
       success <- core_ids |>
         purrr::map_lgl(

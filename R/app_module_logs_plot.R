@@ -47,7 +47,7 @@ logs_plot_server <- function(
       req(data$has_exp_loaded())
       validate(need(data$get_logs(), "No logs available."))
       out <- data$get_logs() |>
-        count(device, label) |>
+        ml_summarize_log_devices() |>
         select(
           "Device" = "device",
           "Label" = "label",

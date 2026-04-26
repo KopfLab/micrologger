@@ -163,6 +163,31 @@ ml_parse_logs <- function(
   return(logs)
 }
 
+#' summarize log devices
+ml_summarize_log_devices <- function(
+  logs,
+  include_snapshot_only_values = FALSE,
+  include_text_values = FALSE
+) {
+  if (!include_snapshot_only_values) {
+    logs <- logs |>
+      filter(
+        .by = c("exp_id", "path"),
+        any(!.data$is_snap)
+      )
+  }
+  if (!include_text_values) {
+    logs <- logs |> filter(!is.na(value))
+  }
+  logs |>
+    summarize(
+      .by = "device",
+      # to make sure there's no problem with cached label
+      label = tail(label, n = 1L),
+      n = n()
+    )
+}
+
 #' Summarize logs
 #' @export
 ml_summarize_logs <- function(
