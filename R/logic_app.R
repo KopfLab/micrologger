@@ -36,7 +36,7 @@ get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
       ),
       last_recording_change = last_recording_change |>
         lubridate::with_tz(timezone) |>
-        format("%b %d %Y %H:%M:%S"),
+        format("%b %d %Y %H:%M:%S %Z"),
       .after = 1L
     ) |>
     simplify_owner(user_id = user_id) |>
@@ -68,7 +68,7 @@ get_experiment_devices_for_table_in_app <- function(
     mutate(
       last_heard = .data$last_heard |>
         lubridate::with_tz(timezone) |>
-        format("%b %d %Y %H:%M:%S")
+        format("%b %d %Y %H:%M:%S %Z")
     ) |>
     simplify_owner(user_id = user_id) |>
     mutate(
@@ -108,7 +108,7 @@ get_unlinked_devices_for_table_in_app <- function(devices, timezone, user_id) {
     mutate(
       last_heard = .data$last_heard |>
         lubridate::with_tz(timezone) |>
-        format("%b %d %Y %H:%M:%S")
+        format("%b %d %Y %H:%M:%S %Z")
     ) |>
     simplify_owner(user_id = user_id) |>
     mutate(

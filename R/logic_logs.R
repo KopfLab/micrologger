@@ -121,7 +121,7 @@ ml_parse_logs <- function(
             .data$data_units == "dt" ~ .data$data_text |>
             lubridate::ymd_hms(quiet = TRUE) |>
             lubridate::with_tz(timezone) |>
-            format("%b %d %Y %H:%M:%S"),
+            format("%b %d %Y %H:%M:%S %Z"),
           TRUE ~ .data$data_text
         )
       )
