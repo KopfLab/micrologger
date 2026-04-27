@@ -52,6 +52,7 @@ ml_ui <- function(timezone, user, groups, default_theme) {
         title = NULL, # single nav panel
         # SIDE BAR ==============
         bslib::page_sidebar(
+          padding = 0,
           sidebar = bslib::sidebar(
             open = nrow(groups) > 1, # collapsed by default
             h5(
