@@ -453,6 +453,7 @@ data_server <- function(
       out |> log_cnds(ns = ns)
       if (!is.null(out$result) && out$result == 1) {
         log_success(ns = ns, user_msg = "Device label updated.")
+        ml_clear_logs_cache() # clear cache to avoid label isses
         refresh_exp_devices()
       }
     }
