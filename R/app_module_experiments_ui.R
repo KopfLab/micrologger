@@ -269,7 +269,12 @@ generate_device_control_ui <- function(ns) {
 
     # STRUCTURES ========
     bslib::card(
-      bslib::card_header(icon("folder-tree"), "Data structures"),
+      bslib::card_header(
+        icon("folder-tree"),
+        "Data structures",
+        # right aligned fetch data button
+        sddsParticle::sdds_ui_structures_fetch_data("sdds", class = "ms-auto")
+      ),
       min_height = 400,
       bslib::layout_sidebar(
         sidebar = bslib::sidebar(
