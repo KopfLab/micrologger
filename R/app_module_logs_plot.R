@@ -447,6 +447,7 @@ logs_plot_ui <- function(id, plot_height = 500) {
       fillable = TRUE,
       bslib::card(
         full_screen = TRUE,
+        min_height = 150,
         max_height = 200,
         padding = 0,
         module_selector_table_ui(ns("log_devices"))
