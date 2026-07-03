@@ -28,12 +28,6 @@ ml_server <- function(
       })
     })
 
-    # group
-    output$group_name <- renderUI({
-      req(input$group)
-      filter(groups, group_id == input$group)$group_desc
-    })
-
     # particle module
 
     # TODO: make it possible to pass additional modules for the value editing:
@@ -43,7 +37,8 @@ ml_server <- function(
       "sdds",
       token,
       timezone = reactive(input$timezone),
-      accessible_core_ids = experiment_core_ids
+      accessible_core_ids = experiment_core_ids,
+      quick_actions = ml_quick_actions()
     )
 
     # data module

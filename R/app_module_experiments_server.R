@@ -25,6 +25,11 @@ experiments_server <- function(
     ## refresh
     observeEvent(input$refresh_experiments, data$refresh_exps())
 
+    ## hide (collapse the experiments accordion panel)
+    observeEvent(input$hide_experiments, {
+      bslib::accordion_panel_close(id = "accordion", values = "Experiments")
+    })
+
     ## prep experiments for table
     get_experiments_for_table <- reactive({
       # safety checks
@@ -411,51 +416,9 @@ experiments_server <- function(
       data$link_and_claim_devices(unlinked_devices$get_selected_ids())
     })
 
-    # device control  ========
-
-    # show data structure and common actions and disable/enable common actions
-    observeEvent(sdds$devices$get_selected_ids(), {
-      device_selected <- !is_empty(sdds$devices$get_selected_ids())
-      shinyjs::toggleState("zero", condition = device_selected)
-      shinyjs::toggleState("start_stirrer", condition = device_selected)
-      shinyjs::toggleState("stop_stirrer", condition = device_selected)
-      shinyjs::toggleState(
-        "change_stirrer",
-        condition = device_selected
-      )
-      shinyjs::toggleState("save", condition = device_selected)
-      if (device_selected) {
-        bslib::accordion_panel_open(
-          id = "device_control_accordion",
-          values = "Common actions"
-        )
-        bslib::accordion_panel_open(
-          id = "device_control_accordion",
-          values = "Data structures"
-        )
-      }
-    })
-
-    ## custom actions
-    observeEvent(
-      input$zero,
-      sdds$edit_structure("sensor.action", value = "zero")
-    )
-    observeEvent(
-      input$start_stirrer,
-      sdds$edit_structure("stirrer.action", value = "start")
-    )
-    observeEvent(
-      input$stop_stirrer,
-      sdds$edit_structure("stirrer.action", value = "stop")
-    )
-    observeEvent(
-      input$change_stirrer,
-      sdds$edit_structure("stirrer.setpoint_rpm")
-    )
-    observeEvent(input$save, {
-      sdds$edit_structure("SYSTEM.action", value = "saveState")
-    })
+    # device control is handled by the sdds module: the quick actions are
+    # defined in ml_quick_actions() and passed to sddsParticle::sdds_server()
+    # in the app server, which wires the buttons and gates them on selection
 
     # logs ========
     logs <- logs_plot_server("logs_plot", data)

@@ -8,7 +8,7 @@ experiments_ui <- function(id) {
   tagList(
     # Experiment list ===========
     bslib::accordion(
-      id = "accordion",
+      id = ns("accordion"),
       multiple = TRUE,
       bslib::accordion_panel(
         "Experiments",
@@ -26,18 +26,21 @@ experiments_ui <- function(id) {
                 icon = icon("plus"),
                 style = "border: 0;"
               ) |>
-                add_tooltip(
-                  "Create new experiment."
-                ),
+                add_tooltip("Create new experiment."),
               actionButton(
                 ns("refresh_experiments"),
                 "Refresh",
                 icon = icon("arrows-rotate"),
                 style = "border: 0;"
               ) |>
-                add_tooltip(
-                  "Refresh experiments list."
-                )
+                add_tooltip("Refresh experiments list."),
+              actionButton(
+                ns("hide_experiments"),
+                "Hide",
+                icon = icon("eye-slash"),
+                style = "border: 0;"
+              ) |>
+                add_tooltip("Collapse the experiments list.")
             ),
             module_selector_table_ui(ns("experiments"))
           ),
@@ -245,92 +248,73 @@ generate_device_control_ui <- function(ns) {
   bslib::nav_panel(
     value = "device_ctrl",
     title = "Device Control",
-
-    # DEVICES ========
-    bslib::accordion(
-      bslib::accordion_panel(
-        "Devices under control of this experiment",
-        icon = icon("microchip"),
-        bslib::card(
-          full_screen = TRUE,
-          max_height = 300,
-          bslib::layout_sidebar(
-            sidebar = bslib::sidebar(
-              position = "left",
-              width = "160",
-              sddsParticle::sdds_ui_devices_actions("sdds")
-            ),
-            sddsParticle::sdds_ui_devices_table("sdds")
-          ),
-          bslib::card_footer("Select the devices you want to work with.")
-        )
+    # devices selection in the left sidebar, data structures as main content
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
+        width = "550",
+        open = "open",
+        # fillable so the devices card (and its table) fill the sidebar height
+        fillable = TRUE,
+        sddsParticle::sdds_ui_devices_card("sdds")
+      ),
+      sddsParticle::sdds_ui_structures_card(
+        "sdds",
+        quick_actions = ml_quick_actions()
       )
-    ),
+    )
+  )
+}
 
-    # STRUCTURES ========
-    bslib::card(
-      bslib::card_header(
-        icon("folder-tree"),
-        "Data structures",
-        # right aligned fetch data button
-        sddsParticle::sdds_ui_structures_fetch_data("sdds", class = "ms-auto")
-      ),
-      min_height = 400,
-      bslib::layout_sidebar(
-        sidebar = bslib::sidebar(
-          position = "left",
-          width = "230",
-          bslib::accordion(
-            open = TRUE,
-            bslib::accordion_panel(
-              "Quick actions",
-              icon = icon("bolt-lightning"),
-              actionButton(
-                ns("zero"),
-                "Zero OD Reader",
-                icon = icon("0")
-              ) |>
-                shinyjs::disabled(),
-              spaces(),
-              actionButton(
-                ns("start_stirrer"),
-                "Start stirring",
-                icon = icon("play")
-              ) |>
-                shinyjs::disabled(),
-              spaces(),
-              actionButton(
-                ns("stop_stirrer"),
-                "Stop stirring",
-                icon = icon("stop")
-              ) |>
-                shinyjs::disabled(),
-              spaces(),
-              actionButton(
-                ns("change_stirrer"),
-                "Change speed",
-                icon = icon("gauge")
-              ) |>
-                shinyjs::disabled(),
-              spaces(),
-              actionButton(
-                ns("save"),
-                "Save state",
-                icon = icon("floppy-disk")
-              ) |>
-                shinyjs::disabled()
-            ),
-            bslib::accordion_panel(
-              "Controls",
-              icon = icon("gears"),
-              sddsParticle::sdds_ui_structures_actions("sdds")
-            )
-          )
-        ),
-        # no full screen for structures: no point, won't work with the modal dialogs
-        sddsParticle::sdds_ui_structures_table("sdds"),
-      ),
-      bslib::card_footer("Select structure entry to change values.")
+# the micrologger-specific quick actions shown in the "Quick actions" popover of
+# the data structures card; pressing a button calls the sdds module's
+# edit_structure(path, value) (the same list is passed to sddsParticle::sdds_server())
+ml_quick_actions <- function() {
+  list(
+    sddsParticle::sdds_ui_quick_action(
+      "zero",
+      "Zero OD reader",
+      icon = icon("0"),
+      path = "sensor.action",
+      value = "zero"
+    ),
+    sddsParticle::sdds_ui_quick_action(
+      "change_read_interval",
+      "Change read interval",
+      icon = icon("vial-circle-check"),
+      path = "sensor.reading.readInterval_ms"
+    ),
+    sddsParticle::sdds_ui_quick_action(
+      "change_publish_interval",
+      "Change publish interval",
+      icon = icon("upload"),
+      path = "SYSTEM.publishing.globalInterval_ms"
+    ),
+    sddsParticle::sdds_ui_quick_action(
+      "start_stirrer",
+      "Start stirring",
+      icon = icon("play"),
+      path = "stirrer.action",
+      value = "start"
+    ),
+    sddsParticle::sdds_ui_quick_action(
+      "stop_stirrer",
+      "Stop stirring",
+      icon = icon("stop"),
+      path = "stirrer.action",
+      value = "stop"
+    ),
+    sddsParticle::sdds_ui_quick_action(
+      "change_stirrer",
+      "Change speed",
+      icon = icon("gauge"),
+      path = "stirrer.setpoint_rpm"
+    ),
+    sddsParticle::sdds_ui_quick_action(
+      "save",
+      "Save state",
+      icon = icon("floppy-disk"),
+      path = "SYSTEM.action",
+      value = "saveState"
     )
   )
 }
