@@ -113,6 +113,10 @@ data_server <- function(
       }
       if (!identical(values$current_exp_screen, screen)) {
         values$current_exp_screen <- screen
+        if (screen == "device_ctrl") {
+          # make sure device links are loaded when device control is selected
+          get_exp_devices_links()
+        }
       }
     }
 
@@ -398,27 +402,30 @@ data_server <- function(
         return(NULL)
       }
 
-      # bring in system information (function returns out with result and conditions)
-      sys_info_out <-
-        sddsParticle::particle_get_and_parse_sdds_systems(
-          token = particle_token,
-          core_ids = exp_devices$core_id,
-          timezone = get_timezone()
-        )
-      sys_info_out |> log_cnds(ns = ns)
-      if (!is.null(sys_info_out$result)) {
-        exp_devices <- exp_devices |>
-          left_join(
-            sys_info_out$result |>
-              select(
-                any_of(c(
-                  "core_id" = "coreid",
-                  "publishing.record",
-                  "publishing.globalInterval_ms"
-                ))
-              ),
-            by = "core_id"
+      # bring in system information for connected devices (function returns out with result and conditions)
+      connected_devices <- dplyr::filter(exp_devices, .data$connected)$core_id
+      if (length(connected_devices) > 0) {
+        sys_info_out <-
+          sddsParticle::particle_get_and_parse_sdds_systems(
+            token = particle_token,
+            core_ids = connected_devices,
+            timezone = get_timezone()
           )
+        sys_info_out |> log_cnds(ns = ns)
+        if (!is.null(sys_info_out$result)) {
+          exp_devices <- exp_devices |>
+            left_join(
+              sys_info_out$result |>
+                select(
+                  any_of(c(
+                    "core_id" = "coreid",
+                    "publishing.record",
+                    "publishing.globalInterval_ms"
+                  ))
+                ),
+              by = "core_id"
+            )
+        }
       }
       return(exp_devices)
     })
