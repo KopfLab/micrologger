@@ -21,6 +21,14 @@ simplify_owner <- function(experiments, user_id) {
 # get experiments for table in app
 get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
   experiments |>
+    simplify_owner(user_id = user_id) |>
+    arrange(
+      desc(user_id == !!user_id),
+      archived,
+      desc(recording),
+      desc(is.na(last_recording_change)),
+      desc(last_recording_change)
+    ) |>
     mutate(
       status = case_when(
         archived ~ "finished",
@@ -38,16 +46,6 @@ get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
         lubridate::with_tz(timezone) |>
         format("%b %d %Y %H:%M:%S %Z"),
       .after = 1L
-    ) |>
-    simplify_owner(user_id = user_id) |>
-    relocate("status", "owner", .after = "category") |>
-    arrange(
-      desc(user_id == !!user_id),
-      archived,
-      desc(recording),
-      desc(is.na(last_recording_change)),
-      desc(last_recording_change),
-      desc(exp_id)
     ) |>
     select(
       "exp_id",

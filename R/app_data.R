@@ -232,14 +232,14 @@ data_server <- function(
     ## send commands ot particle devices ==========
 
     ## send commands to particle device
-    send_commands <- function(coreid, cmds) {
+    send_commands <- function(coreid, cmds, .call = caller_call()) {
       out <- coreid[1] |>
         sddsParticle::particle_send_sdds_commands(
           cmds = cmds,
           token = particle_token
         ) |>
         try_catch_cnds(error_value = list(success = FALSE))
-      out |> log_cnds(ns = ns)
+      out |> log_cnds(ns = ns, .call = .call)
       return(all(out$result$success))
     }
 
@@ -262,16 +262,29 @@ data_server <- function(
       if (length(core_ids) == 0) {
         return()
       }
-      success <- core_ids |>
-        purrr::map_lgl(
-          send_commands,
-          # fixME
-          cmds = c(
-            "SYSTEM.publishing.record=ON",
-            "SYSTEM.action=saveState",
-            "SYSTEM.action=sendSddsState"
+
+      device_info <- get_exp_devices_info() |>
+        dplyr::filter(.data$core_id %in% core_ids)
+      success <- rep(FALSE, nrow(device_info))
+
+      # try to start recording on connected devices
+      if (any(device_info$connected)) {
+        current_call <- current_call()
+        success[device_info$connected] <- device_info$core_id[
+          device_info$connected
+        ] |>
+          purrr::map_lgl(
+            send_commands,
+            cmds = c(
+              "SYSTEM.publishing.record=ON",
+              "SYSTEM.action=saveState",
+              "SYSTEM.action=sendSddsState"
+            ),
+            .call = current_call
           )
-        )
+      }
+
+      # update
       if (all(success)) {
         log_success(
           ns = ns,
@@ -284,7 +297,7 @@ data_server <- function(
           ns = ns,
           user_msg = "Devices offline",
           warning = format_inline(
-            "{sum(!success)}/{length(success)} of the {qty(sum(!success)}device{?s} under control of this experiment could not be reached and {?is/are} not recording. Check that {?it is/they are} online and pause + resume the experiment recording to try again."
+            "{sum(!success)}/{length(success)} of the {qty(length(success))}device{?s} under control of this experiment ({device_info$core_name[!success]}) could not be reached and {?is/are} not recording. Check that {?it is/they are} online and pause + resume the experiment recording to try again."
           )
         )
       }
@@ -309,16 +322,29 @@ data_server <- function(
       if (length(core_ids) == 0) {
         return()
       }
-      success <- core_ids |>
-        purrr::map_lgl(
-          send_commands,
-          # fixME
-          cmds = c(
-            "SYSTEM.action=sendSddsState",
-            "SYSTEM.publishing.record=OFF",
-            "SYSTEM.action=saveState"
+
+      device_info <- get_exp_devices_info() |>
+        dplyr::filter(.data$core_id %in% core_ids)
+      success <- rep(FALSE, nrow(device_info))
+
+      # try to stop connected devices
+      if (any(device_info$connected)) {
+        current_call <- current_call()
+        success[device_info$connected] <- device_info$core_id[
+          device_info$connected
+        ] |>
+          purrr::map_lgl(
+            send_commands,
+            cmds = c(
+              "SYSTEM.action=sendSddsState",
+              "SYSTEM.publishing.record=OFF",
+              "SYSTEM.action=saveState"
+            ),
+            .call = current_call
           )
-        )
+      }
+
+      # update
       if (all(success)) {
         log_success(
           ns = ns,
@@ -331,7 +357,7 @@ data_server <- function(
           ns = ns,
           user_msg = "Devices offline",
           warning = format_inline(
-            "{sum(!success)}/{length(success)} of the {qty(sum(!success)}device{?s} under control of this experiment could not be reached and may still be recording. Check that {?it is/they are} online and resume + pause the experiment recording to try to stop again."
+            "{sum(!success)}/{length(success)} of the {qty(length(success))}device{?s} under control of this experiment ({device_info$core_name[!success]}) could not be reached and may still be recording. Check that {?it is/they are} online and resume + pause the experiment recording to try to stop again."
           )
         )
       }
