@@ -510,7 +510,8 @@ logs_plot_ui <- function(id, plot_height = 500) {
       ),
 
       # PLOT CONTROLS =============
-      bslib::card_body(
+      bslib::card(
+        full_screen = TRUE,
         min_height = 300,
         div(
           id = ns("data_plot_actions"),
