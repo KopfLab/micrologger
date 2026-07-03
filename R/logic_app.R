@@ -45,7 +45,9 @@ get_experiments_for_table_in_app <- function(experiments, timezone, user_id) {
       desc(user_id == !!user_id),
       archived,
       desc(recording),
-      desc(last_recording_change)
+      desc(is.na(last_recording_change)),
+      desc(last_recording_change),
+      desc(exp_id)
     ) |>
     select(
       "exp_id",

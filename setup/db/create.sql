@@ -32,7 +32,7 @@ CREATE TABLE experiments
   recording BOOLEAN NOT NULL DEFAULT FALSE,
   current_segment INTEGER NOT NULL DEFAULT 0,
   first_recording_start TIMESTAMP WITH TIME ZONE,
-  last_recording_change TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_recording_change TIMESTAMP WITH TIME ZONE,
   archived BOOLEAN NOT NULL DEFAULT FALSE
 );
 
