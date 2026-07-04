@@ -1,13 +1,12 @@
 Package: micrologger
 Title: GUI for GEOM µLoggers
-Version: 0.4.8
+Version: 0.5.0
 Authors@R: 
     person("Sebastian", "Kopf", , "seb.kopf@gmail.com", role = c("aut", "cre"))
 Description: Provides a graphical user interface to interact with µLoggers including setting up experiments, visualizating data, and sending commands.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Depends:
     R (>= 4.1.0)
 Imports:
@@ -41,3 +40,4 @@ Config/testthat/edition: 3
 URL: https://github.com/KopfLab/micrologger
 BugReports: https://github.com/KopfLab/micrologger/issues
 Language: en-US
+Config/roxygen2/version: 8.0.0
