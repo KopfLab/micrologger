@@ -38,7 +38,14 @@ ml_server <- function(
       token,
       timezone = reactive(input$timezone),
       accessible_core_ids = experiment_core_ids,
-      quick_actions = ml_quick_actions()
+      quick_actions = ml_quick_actions(),
+      # µLogger-specific value editors (resistance readings in Ohm)
+      additional_value_types = list(
+        "resistance" = sddsParticle::sdds_value_type(
+          condition = .data$base_units == "Ohm",
+          module = ml_value_resistance_input
+        )
+      )
     )
 
     # data module
