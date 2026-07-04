@@ -19,5 +19,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Sebastian Kopf \email{seb.kopf@gmail.com}
 
+Authors:
+\itemize{
+  \item Sebastian Kopf \email{seb.kopf@gmail.com}
+}
+
 }
 \keyword{internal}

@@ -208,6 +208,27 @@ data_server <- function(
       }
     }
 
+    delete_exp <- function() {
+      if (!has_exp_loaded()) {
+        log_error(ns = ns, user_msg = "No experiment loaded")
+        return()
+      }
+      out <- ml_delete_experiment(exp_id = values$current_exp_id) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (identical(out$result, TRUE)) {
+        log_success(
+          ns = ns,
+          user_msg = "Experiment and all its data have been deleted."
+        )
+        # the experiment no longer exists - reset the loaded state
+        values$current_exp_id <- NULL
+        values$current_exp <- NULL
+        values$has_exp_loaded <- FALSE
+        refresh_exps()
+      }
+    }
+
     # PARTICLE DEVICES ======
 
     ## get particle devices ============
@@ -694,6 +715,7 @@ data_server <- function(
       start_exp_recording = start_exp_recording,
       stop_exp_recording = stop_exp_recording,
       archive_exp = archive_exp,
+      delete_exp = delete_exp,
       ## exp devices =====
       refresh_exp_devices = refresh_exp_devices,
       get_exp_devices_links = get_exp_devices_links,

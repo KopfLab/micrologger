@@ -193,6 +193,72 @@ ml_archive_experiment <- function(exp_id, con = db()) {
   return(TRUE)
 }
 
+#' Delete an experiment and all of its data
+#'
+#' Permanently deletes the experiment together with all of its data (log
+#' records), removes its device links and releases any devices it controlled.
+#' This cannot be undone.
+#' @return TRUE if the experiment was deleted, FALSE otherwise
+#' @export
+ml_delete_experiment <- function(exp_id, con = db()) {
+  # safety checks
+  exp_id |>
+    check_arg(
+      !missing(exp_id) && is_scalar_integerish(exp_id),
+      "must be a single exp_id"
+    )
+
+  # information
+  cli_alert_info(
+    "Deleting {.field experiment} {col_magenta(exp_id)} and all of its data."
+  )
+
+  # delete atomically - there are no ON DELETE cascades, so the foreign key
+  # dependencies have to be resolved in the right order within a transaction
+  deleted <- DBI::dbWithTransaction(con, {
+    # release any devices controlled by this experiment
+    sprintf(
+      "UPDATE devices SET control_exp_id = NULL WHERE control_exp_id = %s",
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+
+    # remember this experiment's logs, then drop the experiment_logs links
+    sprintf(
+      "CREATE TEMP TABLE _ml_del_logs ON COMMIT DROP AS SELECT log_id FROM experiment_logs WHERE exp_id = %s",
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+    sprintf("DELETE FROM experiment_logs WHERE exp_id = %s", to_sql(exp_id)) |>
+      run_sql(con, .retry = FALSE)
+
+    # delete the log data that is no longer linked to any experiment
+    paste(
+      "DELETE FROM logs WHERE log_id IN (SELECT log_id FROM _ml_del_logs)",
+      "AND log_id NOT IN (SELECT log_id FROM experiment_logs)"
+    ) |>
+      run_sql(con, .retry = FALSE)
+
+    # remove the device links
+    sprintf(
+      "DELETE FROM experiment_devices WHERE exp_id = %s",
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+
+    # delete the experiment itself
+    sprintf("DELETE FROM experiments WHERE exp_id = %s", to_sql(exp_id)) |>
+      run_sql(con, .retry = FALSE)
+  })
+
+  if (deleted == 0) {
+    cli_alert_warning("Something went wrong, no experiment was deleted.")
+    return(FALSE)
+  }
+  cli_alert_success("Experiment and all its data deleted.")
+  return(TRUE)
+}
+
 
 # experiment devices =========
 

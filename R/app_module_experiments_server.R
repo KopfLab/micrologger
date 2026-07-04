@@ -193,6 +193,80 @@ experiments_server <- function(
       data$archive_exp()
     })
 
+    ## delete: require the user to retype the experiment name to confirm
+    delete_confirm_text <- reactiveVal(NULL)
+    observeEvent(input$delete_experiment, {
+      exp <- data$get_current_exp()
+      has_name <-
+        !is.null(exp) && nrow(exp) > 0 && !is.na(exp$name) && nzchar(exp$name)
+      confirm_text <- if (has_name) exp$name else as.character(exp$exp_id)
+      exp_display <- if (has_name) {
+        sprintf("“%s”", exp$name)
+      } else {
+        sprintf("experiment #%s", exp$exp_id)
+      }
+      delete_confirm_text(confirm_text)
+      showModal(modalDialog(
+        title = "Delete experiment?",
+        tags$p(
+          "Are you sure you want to delete ",
+          tags$strong(exp_display),
+          " and all of its data?"
+        ),
+        tags$p(
+          tags$strong(
+            style = "color: #ff0000;",
+            "This cannot be undone."
+          )
+        ),
+        tags$p(
+          "To confirm, type ",
+          tags$strong(confirm_text),
+          " below and click “Delete experiment”."
+        ),
+        textInput(
+          ns("delete_confirm_name"),
+          label = NULL,
+          placeholder = "Experiment name"
+        ),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton(
+            ns("confirm_delete_experiment"),
+            "Delete experiment",
+            icon = icon("trash"),
+            class = "btn-danger"
+          ) |>
+            shinyjs::disabled()
+        ),
+        easyClose = TRUE
+      ))
+    })
+
+    ## only enable the confirm button when the typed name matches exactly
+    observeEvent(
+      input$delete_confirm_name,
+      shinyjs::toggleState(
+        "confirm_delete_experiment",
+        condition = identical(
+          trimws(input$delete_confirm_name),
+          delete_confirm_text()
+        )
+      ),
+      ignoreNULL = FALSE
+    )
+
+    observeEvent(input$confirm_delete_experiment, {
+      # safety net in case the disabled state was bypassed
+      req(identical(trimws(input$delete_confirm_name), delete_confirm_text()))
+      removeModal()
+      data$delete_exp()
+      # the experiment is gone; clear the selection so the details view hides
+      if (experiments$table_exists()) {
+        experiments$deselect_all()
+      }
+    })
+
     # experiment devices =========
 
     ## prep experiment devices for table

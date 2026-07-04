@@ -118,6 +118,17 @@ generate_experiment_configuration_ui <- function(
             add_tooltip(
               "Finish the experiment. Frees up the devices used by this experiment. You will not be able to record more data with this experiment but will still have access to all the data."
             )
+        },
+        if (!exp$archived && !exp$recording) {
+          actionButton(
+            ns("delete_experiment"),
+            label = "Delete experiment",
+            icon = icon("trash"),
+            class = "btn-outline-danger"
+          ) |>
+            add_tooltip(
+              "Permanently delete this experiment and all of its data."
+            )
         }
       ),
       bslib::card_body(
