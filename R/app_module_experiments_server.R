@@ -132,6 +132,10 @@ experiments_server <- function(
         } else {
           "data"
         },
+        # documentation help link for the current tab (pinned far left, with a
+        # spacer on either side of the pills to keep the tabs centered)
+        bslib::nav_item(uiOutput(ns("tab_help"))),
+        bslib::nav_spacer(),
         bslib::nav_panel(
           value = "data",
           "Data",
@@ -145,10 +149,31 @@ experiments_server <- function(
         },
         if (data$is_owner_or_admin()) {
           generate_device_control_ui(ns = ns)
-        }
+        },
+        bslib::nav_spacer()
       ) |>
         div(class = "centered-pills") |>
         bslib::as_fill_carrier()
+    })
+
+    ## documentation help link for the currently selected tab
+    output$tab_help <- renderUI({
+      tab <- input$tabset
+      if (is.null(tab)) tab <- "data"
+      url <- switch(
+        tab,
+        "data" = "https://github.com/KopfLab/micrologger/wiki/Data-Visualization",
+        "configuration" = "https://github.com/KopfLab/micrologger/wiki/Experiment-Configuration",
+        "device_ctrl" = "https://github.com/KopfLab/micrologger/wiki/Device-Control",
+        "https://github.com/KopfLab/micrologger/wiki"
+      )
+      ml_help_link(
+        url,
+        label = "Help",
+        tooltip = "Open the documentation for this tab",
+        class = "btn btn-default",
+        style = "border: 0;"
+      )
     })
 
     ## update experiment tab

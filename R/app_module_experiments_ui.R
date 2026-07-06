@@ -20,6 +20,13 @@ experiments_ui <- function(id) {
             sidebar = bslib::sidebar(
               position = "left",
               width = "160",
+              ml_help_link(
+                "https://github.com/KopfLab/micrologger/wiki/Experiments",
+                label = "Help",
+                tooltip = "Open the experiments documentation",
+                class = "btn btn-default",
+                style = "border: 0;"
+              ),
               actionButton(
                 ns("add_experiment"),
                 "Add new",

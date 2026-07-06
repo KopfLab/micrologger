@@ -22,6 +22,9 @@ ml_ui <- function(timezone, user, groups, default_theme) {
         tags$style(HTML(
           # center the nav-bar pills
           ".centered-pills .nav.nav-pills {justify-content: center;}",
+          # spacers around the pills keep the tabs centered while the leading
+          # help button stays pinned to the far left
+          ".centered-pills .nav.nav-pills > .bslib-nav-spacer {flex: 1;}",
           # align the save action buttons right next to inputs
           ".input-with-save {
             display: flex;
@@ -93,6 +96,16 @@ ml_ui <- function(timezone, user, groups, default_theme) {
           paste0("µLogger GUI v", as.character(packageVersion("micrologger"))),
           href = "https://github.com/KopfLab/micrologger",
           target = "_blank"
+        )
+      ),
+      # documentation help link (far right)
+      bslib::nav_item(
+        ml_help_link(
+          "https://github.com/KopfLab/micrologger/wiki",
+          label = "Help",
+          tooltip = "Open the documentation wiki",
+          class = "btn btn-default",
+          style = "border: 0;"
         )
       ),
 

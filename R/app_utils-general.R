@@ -234,3 +234,22 @@ inline <- function(...) {
 add_tooltip <- function(widget, ...) {
   bslib::tooltip(widget, ...)
 }
+
+# a "help" link (circle-question icon) that opens documentation in a new tab
+# pass a `label` to show text next to the icon, and class/style/... for styling
+ml_help_link <- function(
+  url,
+  label = NULL,
+  tooltip = "Open the documentation",
+  ...
+) {
+  tags$a(
+    icon("circle-question"),
+    if (!is.null(label)) tagList(HTML("&nbsp;"), label),
+    href = url,
+    target = "_blank",
+    role = "button",
+    ...
+  ) |>
+    add_tooltip(tooltip)
+}
