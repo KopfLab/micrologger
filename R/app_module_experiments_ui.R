@@ -327,6 +327,44 @@ ml_quick_actions <- function() {
       icon = icon("gauge"),
       path = "stirrer.setpoint_rpm"
     ),
+    sddsParticle::sdds_ui_quick_action_group(
+      "illumination",
+      "Set Illumination",
+      icon = icon("lightbulb"),
+      actions = list(
+        sddsParticle::sdds_ui_quick_action(
+          "set_intensity",
+          "Set intensity",
+          icon = icon("lightbulb"),
+          path = "lights.intensity_percent"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "set_time_on",
+          "Set time ON",
+          icon = icon("play"),
+          path = "lights.scheduleOn_sec"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "set_time_off",
+          "Set time OFF",
+          icon = icon("stop"),
+          path = "lights.scheduleOff_sec"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "set_start_time",
+          "Set start time",
+          icon = icon("clock"),
+          path = "lights.scheduleOnStart_HHMM"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "start_schedule",
+          "Start schedule",
+          icon = icon("hourglass-start"),
+          path = "lights.action",
+          value = "schedule"
+        )
+      )
+    ),
     sddsParticle::sdds_ui_quick_action(
       "save",
       "Save state",
