@@ -7,7 +7,11 @@
 plotDownloadLink(id, label = "Save", tooltip = "Save the plot as a PDF")
 }
 \arguments{
+\item{id}{module id}
+
 \item{label}{Label for the download link}
+
+\item{tooltip}{tooltip text shown on hover}
 }
 \description{
 Plot Download Link

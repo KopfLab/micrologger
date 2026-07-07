@@ -12,6 +12,17 @@ ml_add_experiment(
   con = db()
 )
 }
+\arguments{
+\item{group_id}{id of the group the experiment belongs to (scalar character)}
+
+\item{user_id}{id of the user creating the experiment (scalar character)}
+
+\item{user_first}{user's first name}
+
+\item{user_last}{user's last name}
+
+\item{con}{database connection (defaults to \code{db()})}
+}
 \description{
 Add new experiment
 }

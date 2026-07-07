@@ -6,6 +6,11 @@
 \usage{
 ml_get_groups(group_id = NULL, con = db())
 }
+\arguments{
+\item{group_id}{which group(s) to fetch (all if NULL)}
+
+\item{con}{database connection (defaults to db())}
+}
 \description{
 Get user groups
 }

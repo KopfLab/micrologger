@@ -7,7 +7,11 @@
 ml_unlink_device_from_experiment(exp_id, core_id, con = db())
 }
 \arguments{
+\item{exp_id}{id of the experiment to unlink devices from (single exp_id)}
+
 \item{core_id}{can be multiple ids}
+
+\item{con}{database connection (defaults to \code{db()})}
 }
 \description{
 Remove experiment devices

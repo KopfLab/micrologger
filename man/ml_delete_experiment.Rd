@@ -6,6 +6,11 @@
 \usage{
 ml_delete_experiment(exp_id, con = db())
 }
+\arguments{
+\item{exp_id}{id of the experiment to delete (single exp_id)}
+
+\item{con}{database connection (defaults to \code{db()})}
+}
 \value{
 TRUE if the experiment was deleted, FALSE otherwise
 }

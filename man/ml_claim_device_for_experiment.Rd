@@ -6,6 +6,13 @@
 \usage{
 ml_claim_device_for_experiment(exp_id, core_id, con = db())
 }
+\arguments{
+\item{exp_id}{id of the experiment claiming the device (single exp_id)}
+
+\item{core_id}{device core id to claim (single string)}
+
+\item{con}{database connection (defaults to \code{db()})}
+}
 \description{
 Claim device for a paritcular experiment
 }

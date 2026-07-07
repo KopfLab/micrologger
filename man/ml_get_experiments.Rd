@@ -13,6 +13,12 @@ ml_get_experiments(
 }
 \arguments{
 \item{group_id}{experiments from which group to fetch}
+
+\item{filter}{optional expression to filter the experiments}
+
+\item{convert_to_TZ}{timezone to convert last_recording_change to (skipped if NULL)}
+
+\item{con}{database connection (defaults to db())}
 }
 \value{
 experiments

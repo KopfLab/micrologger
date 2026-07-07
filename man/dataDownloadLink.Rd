@@ -11,7 +11,11 @@ dataDownloadLink(
 )
 }
 \arguments{
+\item{id}{module id}
+
 \item{label}{Label for the download link}
+
+\item{tooltip}{tooltip text shown on hover}
 }
 \description{
 Data Download Link

@@ -20,6 +20,14 @@ ml_run_gui(
 )
 }
 \arguments{
+\item{user_id}{id of the logged-in user}
+
+\item{user_groups}{groups the user belongs to (controls which loggers and experiments are shown)}
+
+\item{user_is_admin}{whether the user has admin privileges}
+
+\item{user_first_name, user_last_name}{the user's first and last name (used for display)}
+
 \item{token}{particle access token (retrieved from keyring by default), save a token in your keyring with particle_store_token()}
 
 \item{timezone}{the timezone to user for datetime calculations}
@@ -39,6 +47,8 @@ expression in order for the match to be considered successful.}
 \code{"disable"}. The default value, \code{NULL}, will respect the setting from
 any previous calls to  \code{\link[shiny:enableBookmarking]{enableBookmarking()}}. See \code{\link[shiny:enableBookmarking]{enableBookmarking()}}
 for more information on bookmarking your app.}
+
+\item{default_theme}{the bslib preset theme to use by default (the first value is selected)}
 }
 \description{
 Set database credentials ahead of time via \link{ml_set_connection_credentials}.

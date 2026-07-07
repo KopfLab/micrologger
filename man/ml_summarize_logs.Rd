@@ -10,6 +10,13 @@ ml_summarize_logs(
   include_text_values = FALSE
 )
 }
+\arguments{
+\item{logs}{data logs}
+
+\item{include_snapshot_only_values}{whether to include variable paths that only have values from snapshots}
+
+\item{include_text_values}{whether to include text (non-numeric) values}
+}
 \description{
 Summarize logs
 }

@@ -10,6 +10,13 @@ ml_set_connection_credentials(
   password = keyring::key_get("MICROLOGGER_DB_PASSWORD")
 )
 }
+\arguments{
+\item{host}{database host; by default read from the OS keyring}
+
+\item{user}{database user; by default read from the OS keyring}
+
+\item{password}{database password; by default read from the OS keyring}
+}
 \description{
 Set DB connection credentials
 }

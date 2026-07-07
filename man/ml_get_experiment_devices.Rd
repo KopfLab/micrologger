@@ -11,6 +11,15 @@ ml_get_experiment_devices(
   con = db()
 )
 }
+\arguments{
+\item{exp_id}{which experiment id(s) to fetch devices for}
+
+\item{filter}{optional expression to filter the experiments}
+
+\item{select}{tidyselect columns to return (defaults to all)}
+
+\item{con}{database connection (defaults to db())}
+}
 \value{
 experiments_devices
 }

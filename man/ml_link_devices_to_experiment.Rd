@@ -12,6 +12,17 @@ ml_link_devices_to_experiment(
   con = db()
 )
 }
+\arguments{
+\item{exp_id}{id of the experiment to link devices to}
+
+\item{core_ids}{device core id(s) to link}
+
+\item{labels}{optional label(s) for the linked device(s)}
+
+\item{experiment_devices}{tibble of exp_id/core_id/label rows to link (defaults to one built from \code{exp_id}, \code{core_ids}, \code{labels})}
+
+\item{con}{database connection (defaults to \code{db()})}
+}
 \description{
 Add/update for the experiment_devices table
 }

@@ -12,7 +12,6 @@ Depends:
 Imports:
     cli (>= 3.6.0),
     rlang (>= 1.1.0),
-    glue,
     keyring (>= 1.4.0),
     tibble,
     dplyr,

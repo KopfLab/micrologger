@@ -6,6 +6,13 @@
 \usage{
 ml_release_device_from_experiment(exp_id, core_id, con = db())
 }
+\arguments{
+\item{exp_id}{id of the experiment releasing the device (single exp_id)}
+
+\item{core_id}{device core id to release (single string)}
+
+\item{con}{database connection (defaults to \code{db()})}
+}
 \description{
 Free device from an experiment so it can be added to others
 }

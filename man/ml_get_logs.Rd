@@ -18,6 +18,20 @@ ml_get_logs(
 )
 }
 \arguments{
+\item{exp_id}{which experiment id(s) to fetch logs for}
+
+\item{filter}{optional expression to filter the logs (applied after caching)}
+
+\item{select}{tidyselect columns to return from the query}
+
+\item{max_rows}{optional cap on the number of rows retrieved}
+
+\item{cache}{whether to cache raw logs to disk and reuse the cache}
+
+\item{include_snapshots}{whether to also include device snapshots}
+
+\item{con}{database connection (defaults to db())}
+
 \item{parse}{whether to parse the database logs}
 
 \item{timezone}{what timezone to use for parsing}

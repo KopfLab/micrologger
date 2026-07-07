@@ -7,6 +7,8 @@
 plotDownloadServer(input, output, session, plot_func, filename_func)
 }
 \arguments{
+\item{input, output, session}{standard Shiny module server arguments (supplied by \code{\link[shiny:callModule]{shiny::callModule()}})}
+
 \item{plot_func}{reactive function generating the plot}
 
 \item{filename_func}{reactive function returning the default plot name}

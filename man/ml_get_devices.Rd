@@ -13,6 +13,12 @@ ml_get_devices(
 }
 \arguments{
 \item{group_id}{devices from which group(s) to fetch}
+
+\item{filter}{optional expression to filter the devices}
+
+\item{select}{tidyselect columns to return (defaults to all)}
+
+\item{con}{database connection (defaults to db())}
 }
 \value{
 devices

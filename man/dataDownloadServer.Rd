@@ -7,6 +7,8 @@
 dataDownloadServer(input, output, session, data_func, filename_func)
 }
 \arguments{
+\item{input, output, session}{standard Shiny module server arguments (supplied by \code{\link[shiny:callModule]{shiny::callModule()}})}
+
 \item{data_func}{reactive function providing the data}
 
 \item{filename_func}{reactive function returning the default file name}

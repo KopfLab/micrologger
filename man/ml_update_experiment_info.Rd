@@ -12,6 +12,17 @@ ml_update_experiment_info(
   con = db()
 )
 }
+\arguments{
+\item{exp_id}{id of the experiment to update (single id)}
+
+\item{name}{new experiment name, if provided}
+
+\item{description}{new experiment description, if provided}
+
+\item{notes}{new experiment notes, if provided}
+
+\item{con}{database connection (defaults to \code{db()})}
+}
 \value{
 whether the update was successful or not
 }

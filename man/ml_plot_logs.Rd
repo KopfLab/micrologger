@@ -30,7 +30,31 @@ ml_plot_logs(
 
 \item{filter_paths}{a character vector of paths to include in the visualization}
 
+\item{timescale}{x-axis time scale, either absolute \code{"datetime"} or elapsed \code{"duration"}}
+
+\item{timescale_lim}{optional length-2 vector giving the min and max of the time axis}
+
+\item{n_timescale_breaks}{approximate number of breaks on the time axis}
+
+\item{color}{aesthetic mapping for line/point color (defaults to the variable label)}
+
+\item{linetype}{optional aesthetic mapping for line type}
+
+\item{panel}{optional faceting variable used to split the plot into panels}
+
+\item{show_points}{whether to overlay the individual data points}
+
+\item{show_error_range}{whether to show the error range (ribbon) around the values}
+
+\item{include_outliers}{whether to include values flagged as outliers}
+
 \item{include_snapshot_only_values}{if a variable path only has values from snapshot, should they still be plotted? By default NO unless \code{filter_paths} makes specific selections.}
+
+\item{scale_color}{ggplot color scale to apply}
+
+\item{scale_fill}{ggplot fill scale to apply}
+
+\item{text_size}{base text size for the plot theme}
 }
 \description{
 This function helps to visualize data logs retrieved via \link{ml_get_logs} or downloaded from the app.
