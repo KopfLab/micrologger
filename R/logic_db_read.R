@@ -1,4 +1,6 @@
 #' Get user groups
+#' @param group_id which group(s) to fetch (all if NULL)
+#' @param con database connection (defaults to db())
 #' @export
 ml_get_groups <- function(group_id = NULL, con = db()) {
   # information
@@ -21,6 +23,9 @@ ml_get_groups <- function(group_id = NULL, con = db()) {
 
 #' Retrieve devices including their structures and who is currently using them
 #' @param group_id devices from which group(s) to fetch
+#' @param filter optional expression to filter the devices
+#' @param select tidyselect columns to return (defaults to all)
+#' @param con database connection (defaults to db())
 #' @return devices
 #' @export
 ml_get_devices <- function(
@@ -67,6 +72,9 @@ ml_get_devices <- function(
 
 #' Retrieve experiments
 #' @param group_id experiments from which group to fetch
+#' @param filter optional expression to filter the experiments
+#' @param convert_to_TZ timezone to convert last_recording_change to (skipped if NULL)
+#' @param con database connection (defaults to db())
 #' @return experiments
 #' @export
 ml_get_experiments <- function(
@@ -126,6 +134,8 @@ ml_get_experiments <- function(
 #' Returns experiment-devices merged with devices table and structure information
 #'
 #' @inheritParams ml_get_experiments
+#' @param exp_id which experiment id(s) to fetch devices for
+#' @param select tidyselect columns to return (defaults to all)
 #' @return experiments_devices
 #' @export
 ml_get_experiment_devices <- function(
@@ -223,6 +233,13 @@ ml_get_experiment_devices_snapshots <- function(
 }
 
 #' read data logs
+#' @param exp_id which experiment id(s) to fetch logs for
+#' @param filter optional expression to filter the logs (applied after caching)
+#' @param select tidyselect columns to return from the query
+#' @param max_rows optional cap on the number of rows retrieved
+#' @param cache whether to cache raw logs to disk and reuse the cache
+#' @param include_snapshots whether to also include device snapshots
+#' @param con database connection (defaults to db())
 #' @param parse whether to parse the database logs
 #' @param timezone what timezone to use for parsing
 #' @param experiments tibble with experiment information if this should be merged in

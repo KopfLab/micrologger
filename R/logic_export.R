@@ -4,7 +4,6 @@
 #'
 #' @param logs data logs to save
 #' @param file_path path to the .rds, .xlsx and/or .csv files (can be multiple). All folders must already exist.
-#' @param generate_rmd whether to generate an RMarkdown file for analysis. If both .rds and .xlsx file paths are provided, reads from the one listed first. Use \code{generate_rmd = TRUE} to have the function infer the Rmd file name from the .rds/.xlsx file path, or alternatively provide a file path with a specific name for the Rmd file (\code{generate_rmd = file.path(...)}).
 #' @param zip whether to zip the resulting file(s). Use \code{zip = TRUE} to have the function infer the zip file name from the .rds/.xlsx file path, or alternatively provide a file path with a specific name for the zip file (\code{zip = file.path(...)}).
 #' @return returns the logs invisibly for piping
 #' @family data logs functions

@@ -2,8 +2,13 @@
 #'
 #' Set database credentials ahead of time via [ml_set_connection_credentials].
 #'
+#' @param user_id id of the logged-in user
+#' @param user_groups groups the user belongs to (controls which loggers and experiments are shown)
+#' @param user_is_admin whether the user has admin privileges
+#' @param user_first_name,user_last_name the user's first and last name (used for display)
 #' @param token particle access token (retrieved from keyring by default), save a token in your keyring with particle_store_token()
 #' @param timezone the timezone to user for datetime calculations
+#' @param default_theme the bslib preset theme to use by default (the first value is selected)
 #' @inheritParams shiny::shinyApp
 #' @export
 ml_run_gui <- function(

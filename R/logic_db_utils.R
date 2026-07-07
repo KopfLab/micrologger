@@ -23,6 +23,9 @@ ml_store_connection_credentials_password <- function() {
 
 
 #' Set DB connection credentials
+#' @param host database host; by default read from the OS keyring
+#' @param user database user; by default read from the OS keyring
+#' @param password database password; by default read from the OS keyring
 #' @export
 ml_set_connection_credentials <- function(
   host = keyring::key_get("MICROLOGGER_DB_HOST"),
@@ -86,13 +89,13 @@ to_sql <- function(..., named = FALSE) {
     } else if (is.logical(.x)) {
       if (.x) 'true' else 'false'
     } else {
-      stop(glue("unsupported value type: {class(.x)[1]}"), call. = FALSE)
+      cli_abort("unsupported value type: {class(.x)[1]}")
     }
   }
   sql_values <- purrr::map_chr(values, convert_class_to_sql)
   if (named) {
     if (is.null(names(values)) || any(names(values) == "")) {
-      stop("must provide names for each value", call. = FALSE)
+      cli_abort("must provide names for each value")
     }
     sql_values <- sprintf("%s=%s", names(values), sql_values)
   }

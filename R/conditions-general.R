@@ -52,7 +52,7 @@ try_catch_cnds <- function(
 
   # deal with non rlang errors efficienctly
   augment_non_rlang_error <- function(cnd) {
-    if (is(cnd, "rlang_error")) {
+    if (methods::is(cnd, "rlang_error")) {
       # always keep rlang error the same
       cnd_signal(cnd)
     }

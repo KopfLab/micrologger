@@ -1,4 +1,5 @@
 #' Plot Download Server
+#' @param input,output,session standard Shiny module server arguments (supplied by [shiny::callModule()])
 #' @param plot_func reactive function generating the plot
 #' @param filename_func reactive function returning the default plot name
 plotDownloadServer <- function(
@@ -51,7 +52,7 @@ plotDownloadServer <- function(
         ")"
       )
       ggsave(
-        file = filename,
+        filename = filename,
         plot = plot_func(),
         width = isolate(input$save_width),
         height = isolate(input$save_height),
@@ -63,7 +64,9 @@ plotDownloadServer <- function(
 
 
 #' Plot Download Link
+#' @param id module id
 #' @param label Label for the download link
+#' @param tooltip tooltip text shown on hover
 plotDownloadLink <- function(
   id,
   label = "Save",

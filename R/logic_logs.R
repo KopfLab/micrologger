@@ -164,6 +164,9 @@ ml_parse_logs <- function(
 }
 
 #' summarize log devices
+#' @param logs data logs
+#' @param include_snapshot_only_values whether to include variable paths that only have values from snapshots
+#' @param include_text_values whether to include text (non-numeric) values
 ml_summarize_log_devices <- function(
   logs,
   include_snapshot_only_values = FALSE,
@@ -183,12 +186,15 @@ ml_summarize_log_devices <- function(
     summarize(
       .by = "device",
       # to make sure there's no problem with cached label
-      label = tail(label, n = 1L),
+      label = utils::tail(label, n = 1L),
       n = n()
     )
 }
 
 #' Summarize logs
+#' @param logs data logs
+#' @param include_snapshot_only_values whether to include variable paths that only have values from snapshots
+#' @param include_text_values whether to include text (non-numeric) values
 #' @export
 ml_summarize_logs <- function(
   logs,
@@ -221,6 +227,18 @@ ml_summarize_logs <- function(
 #' @param filter generic filter, can be any expression
 #' @param filter_paths a character vector of paths to include in the visualization
 #' @param include_snapshot_only_values if a variable path only has values from snapshot, should they still be plotted? By default NO unless `filter_paths` makes specific selections.
+#' @param timescale x-axis time scale, either absolute `"datetime"` or elapsed `"duration"`
+#' @param timescale_lim optional length-2 vector giving the min and max of the time axis
+#' @param n_timescale_breaks approximate number of breaks on the time axis
+#' @param color aesthetic mapping for line/point color (defaults to the variable label)
+#' @param linetype optional aesthetic mapping for line type
+#' @param panel optional faceting variable used to split the plot into panels
+#' @param show_points whether to overlay the individual data points
+#' @param show_error_range whether to show the error range (ribbon) around the values
+#' @param include_outliers whether to include values flagged as outliers
+#' @param scale_color ggplot color scale to apply
+#' @param scale_fill ggplot fill scale to apply
+#' @param text_size base text size for the plot theme
 #' @export
 ml_plot_logs <- function(
   logs,
@@ -403,7 +421,7 @@ ml_plot_logs <- function(
     # discrete data - plot across segment breaks
     geom_line(
       data = ~ .x |> filter(is_discrete),
-      map = aes(group = paste(exp_id, device, path))
+      mapping = aes(group = paste(exp_id, device, path))
     )
 
   # add points

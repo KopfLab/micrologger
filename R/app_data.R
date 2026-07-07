@@ -501,7 +501,7 @@ data_server <- function(
       out <- ml_link_devices_to_experiment(
         exp_id = values$current_exp_id,
         core_ids = values$selected_exp_device_core_id,
-        label = label
+        labels = label
       ) |>
         try_catch_cnds()
       out |> log_cnds(ns = ns)

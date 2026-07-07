@@ -1,6 +1,11 @@
 # experiments ==========
 
 #' Add new experiment
+#' @param group_id id of the group the experiment belongs to (scalar character)
+#' @param user_id id of the user creating the experiment (scalar character)
+#' @param user_first user's first name
+#' @param user_last user's last name
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_add_experiment <- function(
   group_id,
@@ -43,6 +48,11 @@ ml_add_experiment <- function(
 }
 
 #' Update experiment information
+#' @param exp_id id of the experiment to update (single id)
+#' @param name new experiment name, if provided
+#' @param description new experiment description, if provided
+#' @param notes new experiment notes, if provided
+#' @param con database connection (defaults to `db()`)
 #' @return whether the update was successful or not
 #' @export
 ml_update_experiment_info <- function(
@@ -91,6 +101,11 @@ ml_update_experiment_info <- function(
 }
 
 
+#' Start recording an experiment
+#'
+#' Marks the experiment as recording and advances its recording segment.
+#' @param exp_id id of the experiment to start recording (single exp_id)
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_experiment_start_recording <- function(exp_id, con = db()) {
   # safety checks
@@ -126,6 +141,11 @@ ml_experiment_start_recording <- function(exp_id, con = db()) {
   return(TRUE)
 }
 
+#' Stop recording an experiment
+#'
+#' Marks the experiment as no longer recording (pauses recording).
+#' @param exp_id id of the experiment to stop recording (single exp_id)
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_experiment_stop_recording <- function(exp_id, con = db()) {
   # safety checks
@@ -157,6 +177,11 @@ ml_experiment_stop_recording <- function(exp_id, con = db()) {
   return(TRUE)
 }
 
+#' Archive an experiment
+#'
+#' Marks the experiment as archived and releases all devices it controlled.
+#' @param exp_id id of the experiment to archive (single exp_id)
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_archive_experiment <- function(exp_id, con = db()) {
   # safety checks
@@ -198,6 +223,8 @@ ml_archive_experiment <- function(exp_id, con = db()) {
 #' Permanently deletes the experiment together with all of its data (log
 #' records), removes its device links and releases any devices it controlled.
 #' This cannot be undone.
+#' @param exp_id id of the experiment to delete (single exp_id)
+#' @param con database connection (defaults to `db()`)
 #' @return TRUE if the experiment was deleted, FALSE otherwise
 #' @export
 ml_delete_experiment <- function(exp_id, con = db()) {
@@ -263,6 +290,11 @@ ml_delete_experiment <- function(exp_id, con = db()) {
 # experiment devices =========
 
 #' Add/update for the experiment_devices table
+#' @param exp_id id of the experiment to link devices to
+#' @param core_ids device core id(s) to link
+#' @param labels optional label(s) for the linked device(s)
+#' @param experiment_devices tibble of exp_id/core_id/label rows to link (defaults to one built from `exp_id`, `core_ids`, `labels`)
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_link_devices_to_experiment <- function(
   exp_id,
@@ -300,7 +332,9 @@ ml_link_devices_to_experiment <- function(
 
 #' Remove experiment devices
 #'
+#' @param exp_id id of the experiment to unlink devices from (single exp_id)
 #' @param core_id can be multiple ids
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_unlink_device_from_experiment <- function(
   exp_id,
@@ -347,6 +381,9 @@ ml_unlink_device_from_experiment <- function(
 }
 
 #' Claim device for a paritcular experiment
+#' @param exp_id id of the experiment claiming the device (single exp_id)
+#' @param core_id device core id to claim (single string)
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_claim_device_for_experiment <- function(exp_id, core_id, con = db()) {
   # safety checks
@@ -384,6 +421,9 @@ ml_claim_device_for_experiment <- function(exp_id, core_id, con = db()) {
 }
 
 #' Free device from an experiment so it can be added to others
+#' @param exp_id id of the experiment releasing the device (single exp_id)
+#' @param core_id device core id to release (single string)
+#' @param con database connection (defaults to `db()`)
 #' @export
 ml_release_device_from_experiment <- function(exp_id, core_id, con = db()) {
   # safety checks

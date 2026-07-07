@@ -93,7 +93,10 @@ ml_ui <- function(timezone, user, groups, default_theme) {
       bslib::nav_item(bslib::input_dark_mode(id = "color_mode", mode = NULL)),
       bslib::nav_item(
         a(
-          paste0("µLogger GUI v", as.character(packageVersion("micrologger"))),
+          paste0(
+            "µLogger GUI v",
+            as.character(utils::packageVersion("micrologger"))
+          ),
           href = "https://github.com/KopfLab/micrologger",
           target = "_blank"
         )

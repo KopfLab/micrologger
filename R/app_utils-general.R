@@ -118,8 +118,8 @@ log_error <- function(..., ns = NULL, user_msg = NULL, error = NULL) {
 
   issue_title <- sprintf(
     "Version %s: %s",
-    if (getPackageName() != ".GlobalEnv") {
-      packageVersion(getPackageName())
+    if (methods::getPackageName() != ".GlobalEnv") {
+      utils::packageVersion(methods::getPackageName())
     } else {
       "app"
     },
@@ -133,8 +133,8 @@ log_error <- function(..., ns = NULL, user_msg = NULL, error = NULL) {
 
   issue_url <- sprintf(
     "https://github.com/KopfLab/sddsParticle/issues/new?title=%s&body=%s",
-    URLencode(issue_title, reserved = TRUE),
-    URLencode(HTML(issue_body), reserved = TRUE)
+    utils::URLencode(issue_title, reserved = TRUE),
+    utils::URLencode(HTML(issue_body), reserved = TRUE)
   )
 
   error_screen <- modalDialog(

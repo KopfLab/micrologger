@@ -15,7 +15,7 @@ get_timebase <- function(interval, cutoff) {
   )
   base <- tb[interval >= cutoff * tb][1]
   if (is.na(base)) {
-    base <- tail(tb, 1)
+    base <- utils::tail(tb, 1)
   }
   return(base)
 }

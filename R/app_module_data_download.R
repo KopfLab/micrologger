@@ -1,4 +1,5 @@
 #' Data Download Server
+#' @param input,output,session standard Shiny module server arguments (supplied by [shiny::callModule()])
 #' @param data_func reactive function providing the data
 #' @param filename_func reactive function returning the default file name
 dataDownloadServer <- function(
@@ -18,6 +19,14 @@ dataDownloadServer <- function(
       fade = FALSE,
       easyClose = TRUE,
       size = "s",
+      # Shiny clears the download button's own `disabled` state when it binds
+      # the download link (renderValue removes the class), so we can't gate the
+      # button directly. Instead we wrap it and block clicks on the wrapper via
+      # a CSS class that Shiny never touches.
+      tags$style(HTML(sprintf(
+        "#%s.download-disabled {pointer-events: none; opacity: 0.65;}",
+        ns("download_wrapper")
+      ))),
       textInput(ns("save_name"), "Filename:", filename_func()),
       checkboxGroupInput(
         ns("format"),
@@ -29,8 +38,10 @@ dataDownloadServer <- function(
         )
       ),
       footer = tagList(
-        # start disabled; enabled once at least one format is checked (see below)
-        shinyjs::disabled(
+        # starts disabled (via wrapper class); enabled once a format is checked
+        tags$span(
+          id = ns("download_wrapper"),
+          class = "download-disabled",
           downloadButton(
             ns("download"),
             label = "Download",
@@ -42,11 +53,15 @@ dataDownloadServer <- function(
     )
   })
   observeEvent(input$download_dialog, showModal(save_dialog()))
-  # only allow downloading once at least one format checkbox is selected;
+  # block the download until at least one format checkbox is selected;
   # ignoreNULL = FALSE so the button is re-disabled when all boxes are cleared
   observeEvent(
     input$format,
-    shinyjs::toggleState("download", length(input$format) > 0),
+    shinyjs::toggleClass(
+      "download_wrapper",
+      "download-disabled",
+      condition = length(input$format) == 0
+    ),
     ignoreNULL = FALSE
   )
 
@@ -88,7 +103,9 @@ dataDownloadServer <- function(
 
 
 #' Data Download Link
+#' @param id module id
 #' @param label Label for the download link
+#' @param tooltip tooltip text shown on hover
 dataDownloadLink <- function(
   id,
   label = "Save",
