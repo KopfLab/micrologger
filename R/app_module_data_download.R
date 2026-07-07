@@ -29,41 +29,59 @@ dataDownloadServer <- function(
         )
       ),
       footer = tagList(
-        downloadButton(
-          ns("download"),
-          label = "Download",
-          icon = icon("download")
+        # start disabled; enabled once at least one format is checked (see below)
+        shinyjs::disabled(
+          downloadButton(
+            ns("download"),
+            label = "Download",
+            icon = icon("download")
+          )
         ),
         modalButton("Close")
       )
     )
   })
   observeEvent(input$download_dialog, showModal(save_dialog()))
-  observe(shinyjs::toggleState("download", length(input$format) > 0))
+  # only allow downloading once at least one format checkbox is selected;
+  # ignoreNULL = FALSE so the button is re-disabled when all boxes are cleared
+  observeEvent(
+    input$format,
+    shinyjs::toggleState("download", length(input$format) > 0),
+    ignoreNULL = FALSE
+  )
 
   # download handler
   output$download <- downloadHandler(
     filename = function() {
       isolate(stringr::str_replace(input$save_name, "(\\.zip)?$", ".zip"))
     },
-    content = function(filename) {
+    content = function(file) {
+      save_name <- isolate(input$save_name)
+      formats <- isolate(input$format)
+      logs <- isolate(data_func())
+      req(length(formats) > 0)
       log_debug(
         ns = ns,
         "saving data ",
-        input$save_name,
+        save_name,
         " (formats ",
-        paste(input$format, collapse = ", "),
+        paste(formats, collapse = ", "),
         ")"
       )
-      file_paths <- isolate(paste0(
-        stringr::str_replace(input$save_name, "\\.zip$", ""),
-        input$format
-      ))
-      ml_write_logs_to_file(
-        logs = data_func(),
-        file_path = file_paths,
-        zip = filename
-      )
+      # write the individual format files into a temp directory and let
+      # ml_write_logs_to_file() bundle them into the download zip (`file`)
+      out <- try_catch_cnds({
+        base <- basename(stringr::str_replace(save_name, "\\.zip$", ""))
+        tmp_dir <- tempfile("ml_download_")
+        dir.create(tmp_dir)
+        on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+        ml_write_logs_to_file(
+          logs = logs,
+          file_path = file.path(tmp_dir, paste0(base, formats)),
+          zip = file
+        )
+      })
+      out |> log_cnds(ns = ns)
     }
   )
 }

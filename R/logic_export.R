@@ -117,16 +117,28 @@ zip_files <- function(
       )
     )
   }
-  zip_files <- file_path[files_exist]
-  zip_files_in_wd <- basename(zip_files)
-  file.copy(from = zip_files, to = zip_files_in_wd)
-  zip_file_in_wd <- basename(zip_file)
-  zip::zip(zip_file_in_wd, files = zip_files_in_wd)
-  file.copy(from = zip_file_in_wd, to = zip_file)
+  files_to_zip <- file_path[files_exist]
+
+  # make sure the zip target is an absolute path (zip::zip() below changes the
+  # working directory via `root`, so a relative zip_file would end up misplaced)
+  zip_file <- normalizePath(zip_file, mustWork = FALSE)
+
+  # stage the files (by basename) in a temp directory so the archive contains
+  # flat file names without ever touching the current working directory
+  staging_dir <- tempfile("zip_staging_")
+  dir.create(staging_dir)
+  on.exit(unlink(staging_dir, recursive = TRUE), add = TRUE)
+  file.copy(from = files_to_zip, to = file.path(staging_dir, basename(files_to_zip)))
+
+  # build the archive from the staging dir (as root) using the flat file names
+  zip::zip(
+    zipfile = zip_file,
+    files = basename(files_to_zip),
+    root = staging_dir
+  )
+
   if (cleanup_after_compression) {
-    unlink(unique(c(zip_files, zip_files_in_wd, zip_file_in_wd)))
-  } else {
-    unlink(unique(c(zip_files_in_wd, zip_file_in_wd)))
+    unlink(files_to_zip)
   }
   return(zip_file)
 }
