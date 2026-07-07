@@ -310,7 +310,7 @@ ml_quick_actions <- function() {
     sddsParticle::sdds_ui_quick_action_group(
       "stirring",
       "Set Stirring",
-      icon = icon("spiral"),
+      icon = icon("rotate"),
       actions = list(
         sddsParticle::sdds_ui_quick_action(
           "start_stirrer",
