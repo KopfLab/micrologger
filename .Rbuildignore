@@ -1,8 +1,9 @@
-\\.Rproj$
+^.*\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
-tmp/*
-cache/*
-dev/*
-setup/*
+^logs$
+^tmp/
+^cache/
+^dev/
+^setup/
