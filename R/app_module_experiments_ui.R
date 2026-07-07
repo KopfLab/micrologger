@@ -307,25 +307,46 @@ ml_quick_actions <- function() {
       icon = icon("upload"),
       path = "SYSTEM.publishing.globalInterval_ms"
     ),
-    sddsParticle::sdds_ui_quick_action(
-      "start_stirrer",
-      "Start stirring",
-      icon = icon("play"),
-      path = "stirrer.action",
-      value = "start"
-    ),
-    sddsParticle::sdds_ui_quick_action(
-      "stop_stirrer",
-      "Stop stirring",
-      icon = icon("stop"),
-      path = "stirrer.action",
-      value = "stop"
-    ),
-    sddsParticle::sdds_ui_quick_action(
-      "change_stirrer",
-      "Change speed",
-      icon = icon("gauge"),
-      path = "stirrer.setpoint_rpm"
+    sddsParticle::sdds_ui_quick_action_group(
+      "stirring",
+      "Set Stirring",
+      icon = icon("spiral"),
+      actions = list(
+        sddsParticle::sdds_ui_quick_action(
+          "start_stirrer",
+          "Start stirring",
+          icon = icon("play"),
+          path = "stirrer.action",
+          value = "start"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "stop_stirrer",
+          "Stop stirring",
+          icon = icon("stop"),
+          path = "stirrer.action",
+          value = "stop"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "change_stirrer",
+          "Change speed",
+          icon = icon("gauge"),
+          path = "stirrer.setpoint_rpm"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "stir_through_od",
+          "Stir through OD read",
+          icon = icon("forward"),
+          path = "sensor.reading.stopStirrer",
+          value = "no"
+        ),
+        sddsParticle::sdds_ui_quick_action(
+          "vortex_before_od",
+          "Vortex before OD read",
+          icon = icon("tornado"),
+          path = "sensor.reading.vortex",
+          value = "yes"
+        )
+      )
     ),
     sddsParticle::sdds_ui_quick_action_group(
       "illumination",
