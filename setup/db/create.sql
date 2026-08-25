@@ -102,7 +102,7 @@ CREATE TABLE logs (
   core_id TEXT NOT NULL REFERENCES devices(core_id),
   core_name TEXT,
   log_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-  log_time_offset REAL DEFAULT 0.0,
+  log_time_offset INTEGER DEFAULT 0, -- in ms
   data_path TEXT NOT NULL,
   data_text TEXT,
   data_value DOUBLE PRECISION,
