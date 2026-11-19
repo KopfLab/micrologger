@@ -2,6 +2,7 @@ import json
 import logging
 import boto3
 import psycopg2
+from psycopg2.extras import execute_values
 import os
 
 logger = logging.getLogger()
@@ -240,6 +241,8 @@ def process_burst(cursor, core_id, payload, experiments):
         log_datetime = payload.get("tb")
         total_logs = 0
 
+        # collect all records of the burst
+        rows = []
         for entry in payload.get("b", []):
             data_path = next(iter(entry))
             for record in entry[data_path]:
@@ -254,13 +257,8 @@ def process_burst(cursor, core_id, payload, experiments):
                     )
                     continue
 
-                cursor.execute(
-                    """
-                    INSERT INTO logs (core_id, core_name, log_datetime, log_time_offset, data_path, data_n, data_text, data_value, data_sd, data_units)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING log_id
-                    """,
-                    [
+                rows.append(
+                    (
                         core_id,
                         core_name,
                         log_datetime,
@@ -271,20 +269,43 @@ def process_burst(cursor, core_id, payload, experiments):
                         data_value,
                         None if data_text is not None else record.get("s"),
                         record.get("u"),
-                    ],
+                    )
                 )
 
-                log_id = cursor.fetchone()[0]
-                total_logs += 1
+        # batch insert the logs (one statement per 1000 records instead of one per record)
+        log_ids = []
+        if rows:
+            log_ids = [
+                r[0]
+                for r in execute_values(
+                    cursor,
+                    """
+                    INSERT INTO logs (core_id, core_name, log_datetime, log_time_offset, data_path, data_n, data_text, data_value, data_sd, data_units)
+                    VALUES %s
+                    RETURNING log_id
+                    """,
+                    rows,
+                    page_size=1000,
+                    fetch=True,
+                )
+            ]
+        total_logs = len(log_ids)
 
-                for exp in experiments:
-                    cursor.execute(
-                        """
-                        INSERT INTO experiment_logs (exp_id, segment, log_id)
-                        VALUES (%s, %s, %s)
-                        """,
-                        [exp["exp_id"], exp["segment"], log_id],
-                    )
+        # link all logs to all active experiments (order of the returned log_ids does not matter)
+        if log_ids and experiments:
+            execute_values(
+                cursor,
+                """
+                INSERT INTO experiment_logs (exp_id, segment, log_id)
+                VALUES %s
+                """,
+                [
+                    (exp["exp_id"], exp["segment"], log_id)
+                    for exp in experiments
+                    for log_id in log_ids
+                ],
+                page_size=1000,
+            )
 
         logger.info(
             "processed burst for device {} across experiments {}: {} logs".format(
@@ -366,6 +387,11 @@ def process_single_payload(cursor, db, core_id, group_id, published_at, payload)
             result["error"] = err["body"]
         else:
             db.commit()
+
+    # failed? --> roll back the partial transaction, otherwise the connection stays in an aborted
+    # transaction and all following payloads of this request fail as well
+    if "error" in result:
+        db.rollback()
 
     return result
 

@@ -1,2 +1,3 @@
 # installation
 .aws-sam
+__pycache__
