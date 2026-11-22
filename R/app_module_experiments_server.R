@@ -619,5 +619,15 @@ experiments_server <- function(
 
     # logs ========
     logs <- logs_plot_server("logs_plot", data)
+
+    # return functions ========
+    list(
+      # select (and load) a newly created experiment once the list is refreshed
+      open_new_experiment = function(exp_id) {
+        values$new_exp_id <- exp_id
+        experiments$deselect_all()
+        data$refresh_exps()
+      }
+    )
   })
 }

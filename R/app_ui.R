@@ -9,6 +9,7 @@ ml_ui <- function(timezone, user, groups, default_theme) {
     options(spinner.color = "gray")
 
     bslib::page_navbar(
+      id = "main_nav",
       title = paste("Hello", user),
       theme = bslib::bs_theme(
         preset = default_theme,
@@ -35,6 +36,20 @@ ml_ui <- function(timezone, user, groups, default_theme) {
             margin-bottom: 1rem;
           }"
         ))
+      ),
+      # MAIN PAGES ==========
+      bslib::nav_panel(
+        title = "Experiments",
+        value = "experiments",
+        icon = icon("flask"),
+        padding = 0,
+        experiments_ui("experiments")
+      ),
+      bslib::nav_panel(
+        title = "Devices",
+        value = "devices",
+        icon = icon("microchip"),
+        devices_ui("devices")
       ),
       # TOP BAR ===========
       bslib::nav_spacer(), # pushes items to the right
@@ -110,14 +125,6 @@ ml_ui <- function(timezone, user, groups, default_theme) {
           class = "btn btn-default",
           style = "border: 0;"
         )
-      ),
-
-      # main page
-      bslib::nav_panel(
-        title = NULL, # single nav panel
-        padding = 0,
-        # EXPERIMENTS ==========
-        experiments_ui("experiments")
       )
     )
   }

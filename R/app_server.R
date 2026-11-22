@@ -90,6 +90,22 @@ ml_server <- function(
       get_timezone = reactive(input$timezone)
     )
 
+    # devices overview module: a new experiment is opened in the experiments tab
+    devices <- devices_server(
+      "devices",
+      data = data,
+      get_timezone = reactive(input$timezone),
+      on_new_experiment = function(exp_id) {
+        bslib::nav_select("main_nav", "experiments")
+        experiments$open_new_experiment(exp_id)
+      }
+    )
+
+    # refresh the devices overview whenever it is opened
+    observeEvent(input$main_nav, {
+      if (identical(input$main_nav, "devices")) devices$refresh()
+    })
+
     # dev mode
     observeEvent(input$dev_mode_toggle, {
       if (shiny::in_devmode()) {

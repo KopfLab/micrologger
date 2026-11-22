@@ -31,6 +31,7 @@ data_server <- function(
       selected_exp_device_core_id = NULL,
       selected_exp_device = NULL,
       refresh_unlinked_devices = 0,
+      refresh_group_devices = 0,
       refresh_logs = 0
     )
 
@@ -237,6 +238,7 @@ data_server <- function(
     # get devies in app
     get_particle_devices <- reactive({
       values$refresh_exp_devices
+      values$refresh_group_devices
       log_info(ns = ns, user_msg = "Fetching latest device statuses")
       out <-
         sddsParticle::particle_get_device_info(token = particle_token) |>
@@ -614,6 +616,74 @@ data_server <- function(
       return(available_to_link)
     })
 
+    ## all devices of the group (devices overview) ====
+    refresh_group_devices <- function() {
+      values$refresh_group_devices <- values$refresh_group_devices + 1L
+    }
+
+    get_group_devices <- reactive({
+      req(get_group())
+      all_devices <- get_particle_devices()
+      log_info(ns = ns, user_msg = "Fetching devices")
+      out <-
+        ml_get_devices(group_id = get_group()) |>
+        left_join(all_devices, by = "core_id") |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (is.null(out$result) || nrow(out$result) == 0L) {
+        return(NULL)
+      }
+      return(out$result)
+    })
+
+    ## start a new experiment with devices ====
+    ## creates the experiment, links the devices and claims the ones that are
+    ## not in use by another experiment; returns the new exp_id (NULL if it failed)
+    start_exp_with_devices <- function(core_ids) {
+      if (!is.character(core_ids) || is_empty(core_ids)) {
+        log_error(ns = ns, user_msg = "No devices selected")
+        return(NULL)
+      }
+      exp_id <- add_exp()
+      if (is.null(exp_id)) {
+        return(NULL)
+      }
+
+      # link devices
+      out <- ml_link_devices_to_experiment(
+        exp_id = exp_id,
+        core_ids = core_ids
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (is.null(out$result)) {
+        return(exp_id)
+      }
+      n_linked <- out$result
+
+      # claim the devices that are not in use
+      unclaimed <- get_group_devices() |>
+        filter(.data$core_id %in% !!core_ids, is.na(.data$control_exp_id)) |>
+        pull(.data$core_id)
+      for (core_id in unclaimed) {
+        out <- ml_claim_device_for_experiment(
+          exp_id = exp_id,
+          core_id = core_id
+        ) |>
+          try_catch_cnds()
+        out |> log_cnds(ns = ns)
+      }
+      in_use <- length(core_ids) - length(unclaimed)
+      log_success(
+        ns = ns,
+        user_msg = format_inline(
+          "New experiment started with {n_linked} device{?s}{if (in_use > 0) format_inline(' ({in_use} {?is/are} in use by another experiment and cannot be controlled)') else ''}."
+        )
+      )
+      refresh_group_devices()
+      return(exp_id)
+    }
+
     ## link additional devices ======
 
     ## link core ids to experiment (can provide multiple core_ids) and claim the ones that are not currently used by another experiment
@@ -804,6 +874,9 @@ data_server <- function(
       # unlinked devices =====
       refresh_unlinked_devices = refresh_unlinked_devices,
       get_unlinked_devices = get_unlinked_devices,
+      refresh_group_devices = refresh_group_devices,
+      get_group_devices = get_group_devices,
+      start_exp_with_devices = start_exp_with_devices,
       ## logs =====
       refresh_logs = refresh_logs,
       check_device_data_upload = check_device_data_upload,
