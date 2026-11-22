@@ -102,13 +102,15 @@ CREATE TABLE logs (
   core_id TEXT NOT NULL REFERENCES devices(core_id),
   core_name TEXT,
   log_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-  log_time_offset INTEGER DEFAULT 0, -- in ms
+  log_time_offset INTEGER NOT NULL DEFAULT 0, -- in ms
   data_path TEXT NOT NULL,
   data_text TEXT,
   data_value DOUBLE PRECISION,
   data_n INTEGER,
   data_sd DOUBLE PRECISION,
-  data_units TEXT
+  data_units TEXT,
+  -- the same record can only be stored once (cloud + uploaded bluetooth data)
+  CONSTRAINT logs_unique_record UNIQUE (core_id, log_datetime, log_time_offset, data_path)
 );
 
 -- Table: experiment_logs

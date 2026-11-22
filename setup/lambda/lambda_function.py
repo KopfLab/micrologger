@@ -272,7 +272,16 @@ def process_burst(cursor, core_id, payload, experiments):
                     )
                 )
 
-        # batch insert the logs (one statement per 1000 records instead of one per record)
+        # drop records that appear twice in the same burst (same path and offset), the
+        # upsert below can't touch the same row twice in one statement
+        unique_rows = {}
+        for row in rows:
+            unique_rows.setdefault((row[2], row[3] or 0, row[4]), row)
+        rows = [r if r[3] is not None else r[:3] + (0,) + r[4:] for r in unique_rows.values()]
+
+        # batch insert the logs; records that are already stored (e.g. uploaded from a
+        # bluetooth download) are not inserted again, their existing log_id is returned
+        # (the no-op update makes RETURNING include them) so they still get linked below (one statement per 1000 records instead of one per record)
         log_ids = []
         if rows:
             log_ids = [
@@ -282,6 +291,8 @@ def process_burst(cursor, core_id, payload, experiments):
                     """
                     INSERT INTO logs (core_id, core_name, log_datetime, log_time_offset, data_path, data_n, data_text, data_value, data_sd, data_units)
                     VALUES %s
+                    ON CONFLICT ON CONSTRAINT logs_unique_record
+                    DO UPDATE SET core_id = logs.core_id
                     RETURNING log_id
                     """,
                     rows,
@@ -298,6 +309,7 @@ def process_burst(cursor, core_id, payload, experiments):
                 """
                 INSERT INTO experiment_logs (exp_id, segment, log_id)
                 VALUES %s
+                ON CONFLICT (exp_id, log_id) DO NOTHING
                 """,
                 [
                     (exp["exp_id"], exp["segment"], log_id)
