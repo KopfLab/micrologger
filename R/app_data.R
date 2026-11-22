@@ -655,6 +655,64 @@ data_server <- function(
       refresh_exp_devices()
     }
 
+    ## upload offline data =========
+
+    ## read + check a data bursts file for the selected device (dry run)
+    ## returns list(records, summary) or NULL if the file can't be used
+    check_device_data_upload <- function(file) {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+        return(NULL)
+      }
+      out <- ml_read_data_bursts(file) |> try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (is.null(out$result)) {
+        return(NULL)
+      }
+      records <- out$result
+      out <- ml_upload_data_bursts(
+        exp_id = values$current_exp_id,
+        core_id = values$selected_exp_device_core_id,
+        records = records,
+        core_name = values$selected_exp_device$core_name,
+        dry_run = TRUE
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (is.null(out$result)) {
+        return(NULL)
+      }
+      list(records = records, summary = out$result)
+    }
+
+    ## upload checked records for the selected device
+    upload_device_data <- function(records) {
+      if (!has_exp_loaded() || !values$has_exp_device_selected) {
+        log_error(ns = ns, user_msg = "No experiment device selected")
+        return()
+      }
+      out <- ml_upload_data_bursts(
+        exp_id = values$current_exp_id,
+        core_id = values$selected_exp_device_core_id,
+        records = records,
+        core_name = values$selected_exp_device$core_name
+      ) |>
+        try_catch_cnds()
+      out |> log_cnds(ns = ns)
+      if (!is.null(out$result)) {
+        log_success(
+          ns = ns,
+          user_msg = format_inline(
+            "Uploaded data: {out$result$new} new record{?s}, {out$result$existing} existing record{?s} added to the experiment."
+          )
+        )
+        # the logs cache only fetches newer log ids, existing records that were
+        # just linked would be missed -> reload this experiment's logs from scratch
+        unlink(file.path("cache", sprintf("exp%s_logs.rds", values$current_exp_id)))
+        refresh_logs()
+      }
+    }
+
     # LOGS ======
 
     ## refresh logs ======
@@ -737,6 +795,8 @@ data_server <- function(
       get_unlinked_devices = get_unlinked_devices,
       ## logs =====
       refresh_logs = refresh_logs,
+      check_device_data_upload = check_device_data_upload,
+      upload_device_data = upload_device_data,
       get_logs = get_logs
     )
   })

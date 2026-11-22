@@ -210,7 +210,16 @@ generate_experiment_configuration_ui <- function(
                   add_tooltip(
                     "Make this device available for others to use. You cannot do this while the experiment is recording."
                   )
-              }
+              },
+              actionButton(
+                ns("upload_data"),
+                "Upload data",
+                icon = icon("upload")
+              ) |>
+                shinyjs::disabled() |>
+                add_tooltip(
+                  "Upload data of the selected device that was downloaded via bluetooth (data bursts file from the SDDS browser). Only data from this experiment's recording periods is added, and data that is already stored is not added again."
+                )
             ),
             module_selector_table_ui(ns("experiment_devices"))
           )

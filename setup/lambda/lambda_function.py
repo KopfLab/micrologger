@@ -129,33 +129,49 @@ def get_device_group(cursor, core_id):
         )
 
 
-def get_experiments(cursor, core_id):
+def get_experiments(cursor, core_id, payload):
+    # experiments linked to the device with a recording segment that overlaps the
+    # time range of the burst (queued bursts can arrive long after they were recorded,
+    # so this is based on when the data was recorded, not on what is recording right now)
     try:
+        max_offset = max(
+            [
+                record.get("o") or 0
+                for entry in payload.get("b", [])
+                for records in entry.values()
+                for record in records
+            ]
+            or [0]
+        )
         cursor.execute(
             """
-            SELECT e.exp_id, e.current_segment
+            SELECT DISTINCT e.exp_id
             FROM experiments e
             JOIN experiment_devices ed ON e.exp_id = ed.exp_id
+            JOIN experiment_segments s ON s.exp_id = e.exp_id
             WHERE ed.core_id = %s
-              AND e.recording = TRUE
-              AND e.archived = FALSE
+              AND s.start_datetime <= %s::timestamptz + %s * INTERVAL '1 millisecond'
+              AND (s.end_datetime IS NULL OR s.end_datetime >= %s::timestamptz)
+            ORDER BY e.exp_id
             """,
-            [core_id],
+            [core_id, payload.get("tb"), max_offset, payload.get("tb")],
         )
-        experiments = [
-            {"exp_id": row[0], "segment": row[1]} for row in cursor.fetchall()
-        ]
+        experiments = [{"exp_id": row[0]} for row in cursor.fetchall()]
         if experiments:
             logger.info(
-                "found active experiments {} for device {}".format(experiments, core_id)
+                "found recording experiments {} for device {}".format(experiments, core_id)
             )
         else:
-            logger.info("no active experiments linked to device {}".format(core_id))
+            logger.info(
+                "no experiments linked to device {} were recording at this time".format(
+                    core_id
+                )
+            )
             return None, {
                 "statusCode": 200,
                 "body": json.dumps(
                     {
-                        "message": "no active experiments linked to device {} at the moment".format(
+                        "message": "no experiments linked to device {} were recording at this time".format(
                             core_id
                         )
                     }
@@ -302,21 +318,23 @@ def process_burst(cursor, core_id, payload, experiments):
             ]
         total_logs = len(log_ids)
 
-        # link all logs to all active experiments (order of the returned log_ids does not matter)
+        # link the logs to the experiments
         if log_ids and experiments:
-            execute_values(
-                cursor,
+            # each record goes into the segment that was recording when it was recorded
+            # (records from pauses are not linked; the latest segment should they overlap)
+            cursor.execute(
                 """
                 INSERT INTO experiment_logs (exp_id, segment, log_id)
-                VALUES %s
+                SELECT DISTINCT ON (s.exp_id, l.log_id) s.exp_id, s.segment, l.log_id
+                FROM logs l
+                JOIN experiment_segments s ON s.exp_id = ANY(%s)
+                  AND l.log_datetime + l.log_time_offset * INTERVAL '1 millisecond' >= s.start_datetime
+                  AND (s.end_datetime IS NULL OR l.log_datetime + l.log_time_offset * INTERVAL '1 millisecond' <= s.end_datetime)
+                WHERE l.log_id = ANY(%s)
+                ORDER BY s.exp_id, l.log_id, s.segment DESC
                 ON CONFLICT (exp_id, log_id) DO NOTHING
                 """,
-                [
-                    (exp["exp_id"], exp["segment"], log_id)
-                    for exp in experiments
-                    for log_id in log_ids
-                ],
-                page_size=1000,
+                [[exp["exp_id"] for exp in experiments], log_ids],
             )
 
         logger.info(
@@ -382,7 +400,7 @@ def process_single_payload(cursor, db, core_id, group_id, published_at, payload)
             db.commit()
 
     elif payload_type == "burst":
-        experiments, err = get_experiments(cursor, core_id)
+        experiments, err = get_experiments(cursor, core_id, payload)
         if err:
             result["error"] = err["body"]
         else:

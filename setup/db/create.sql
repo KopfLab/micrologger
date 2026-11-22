@@ -36,6 +36,20 @@ CREATE TABLE experiments
   archived BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- Table: experiment_segments
+-- the recording periods of each experiment (one per start recording, end is NULL while recording)
+
+DROP TABLE IF EXISTS experiment_segments CASCADE;
+
+CREATE TABLE experiment_segments
+(
+  exp_id INTEGER NOT NULL REFERENCES experiments(exp_id),
+  segment INTEGER NOT NULL,
+  start_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_datetime TIMESTAMP WITH TIME ZONE,
+  PRIMARY KEY (exp_id, segment)
+);
+
 -- Table: structures
 
 DROP TABLE IF EXISTS structures CASCADE;

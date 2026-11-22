@@ -120,19 +120,31 @@ ml_experiment_start_recording <- function(exp_id, con = db()) {
     "Starting recording for {.field experiment} {col_magenta(exp_id)}."
   )
 
-  # run SQL
+  # run SQL (experiment + new recording segment in one transaction)
   now_dt <- format(lubridate::now('UTC'))
-  sql <- sprintf(
-    "UPDATE experiments SET recording = true, 
-    last_recording_change = CASE WHEN recording IS NOT TRUE THEN TIMESTAMPTZ %s ELSE last_recording_change END, 
-    first_recording_start = CASE WHEN current_segment = 0 THEN TIMESTAMPTZ %s ELSE NULL END,
-    current_segment = CASE WHEN recording IS NOT TRUE THEN current_segment + 1 ELSE current_segment END
-    WHERE exp_id = %s",
-    to_sql(now_dt),
-    to_sql(now_dt),
-    to_sql(exp_id)
-  )
-  result <- sql |> run_sql(con)
+  result <- DBI::dbWithTransaction(con, {
+    # start a new segment (only if not already recording)
+    sprintf(
+      "INSERT INTO experiment_segments (exp_id, segment, start_datetime)
+      SELECT exp_id, current_segment + 1, TIMESTAMPTZ %s FROM experiments
+      WHERE exp_id = %s AND recording IS NOT TRUE
+      ON CONFLICT (exp_id, segment) DO NOTHING",
+      to_sql(now_dt),
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+    sprintf(
+      "UPDATE experiments SET recording = true, 
+      last_recording_change = CASE WHEN recording IS NOT TRUE THEN TIMESTAMPTZ %s ELSE last_recording_change END, 
+      first_recording_start = CASE WHEN current_segment = 0 THEN TIMESTAMPTZ %s ELSE first_recording_start END,
+      current_segment = CASE WHEN recording IS NOT TRUE THEN current_segment + 1 ELSE current_segment END
+      WHERE exp_id = %s",
+      to_sql(now_dt),
+      to_sql(now_dt),
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+  })
   if (result == 0) {
     cli_alert_warning("Something went wrong, no experiment was affected.")
     return(FALSE)
@@ -160,15 +172,25 @@ ml_experiment_stop_recording <- function(exp_id, con = db()) {
     "Stopping recording for {.field experiment} {col_magenta(exp_id)}."
   )
 
-  # run SQL
-  sql <- sprintf(
-    "UPDATE experiments SET recording = false, 
-    last_recording_change = CASE WHEN recording IS TRUE THEN %s ELSE last_recording_change END
-    WHERE exp_id = %s",
-    to_sql(format(lubridate::now('UTC'))),
-    to_sql(exp_id)
-  )
-  result <- sql |> run_sql(con)
+  # run SQL (experiment + end of the recording segment in one transaction)
+  now_dt <- format(lubridate::now('UTC'))
+  result <- DBI::dbWithTransaction(con, {
+    sprintf(
+      "UPDATE experiment_segments SET end_datetime = TIMESTAMPTZ %s
+      WHERE exp_id = %s AND end_datetime IS NULL",
+      to_sql(now_dt),
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+    sprintf(
+      "UPDATE experiments SET recording = false, 
+      last_recording_change = CASE WHEN recording IS TRUE THEN TIMESTAMPTZ %s ELSE last_recording_change END
+      WHERE exp_id = %s",
+      to_sql(now_dt),
+      to_sql(exp_id)
+    ) |>
+      run_sql(con, .retry = FALSE)
+  })
   if (result == 0) {
     cli_alert_warning("Something went wrong, no experiment was affected.")
     return(FALSE)
@@ -263,6 +285,13 @@ ml_delete_experiment <- function(exp_id, con = db()) {
     paste(
       "DELETE FROM logs WHERE log_id IN (SELECT log_id FROM _ml_del_logs)",
       "AND log_id NOT IN (SELECT log_id FROM experiment_logs)"
+    ) |>
+      run_sql(con, .retry = FALSE)
+
+    # remove the recording segments
+    sprintf(
+      "DELETE FROM experiment_segments WHERE exp_id = %s",
+      to_sql(exp_id)
     ) |>
       run_sql(con, .retry = FALSE)
 

@@ -346,9 +346,16 @@ experiments_server <- function(
           shinyjs::disable("unlink_device")
           shinyjs::disable("claim_device")
           shinyjs::disable("release_device")
+          shinyjs::disable("upload_data")
           shinyjs::hide("device_label_div")
           return()
         }
+
+        # upload data (any time a device is selected)
+        shinyjs::toggleState(
+          "upload_data",
+          condition = data$has_exp_devices_selected()
+        )
 
         # link device
         shinyjs::toggleState(
@@ -406,6 +413,97 @@ experiments_server <- function(
     observeEvent(input$unlink_device, {
       data$unlink_device()
       experiment_devices$deselect_all()
+    })
+
+    # upload offline data ===========
+
+    ## the checked upload (records + summary), NULL if nothing valid is selected
+    upload <- reactiveVal(NULL)
+
+    ## upload modal
+    observeEvent(input$upload_data, {
+      upload(NULL)
+      device <- data$get_selected_exp_device()
+      showModal(modalDialog(
+        title = sprintf("Upload data for %s", device$core_name),
+        tags$p(
+          "Select the data bursts file (.json) downloaded from this device with the SDDS browser.",
+          "Only data recorded during this experiment's recording periods is added,",
+          "data that is already stored is not added again (uploading the same file twice is safe)."
+        ),
+        fileInput(
+          ns("upload_file"),
+          label = NULL,
+          accept = c(".json", "application/json"),
+          width = "100%"
+        ),
+        uiOutput(ns("upload_summary")),
+        footer = tagList(
+          modalButton("Cancel"),
+          actionButton(
+            ns("confirm_upload"),
+            "Upload",
+            icon = icon("upload"),
+            class = "btn-primary"
+          ) |>
+            shinyjs::disabled()
+        ),
+        easyClose = TRUE
+      ))
+    })
+
+    ## check the selected file (nothing is changed in the database)
+    observeEvent(input$upload_file, {
+      upload(data$check_device_data_upload(input$upload_file$datapath))
+      shinyjs::toggleState(
+        "confirm_upload",
+        condition = !is.null(upload()) &&
+          upload()$summary$new + upload()$summary$existing > 0
+      )
+    })
+
+    ## what the upload would do
+    output$upload_summary <- renderUI({
+      req(upload())
+      x <- upload()$summary
+      tz <- get_timezone()
+      tags$div(
+        tags$p(
+          sprintf(
+            "%d records from %s to %s:",
+            x$total,
+            format(lubridate::with_tz(x$from, tz), "%Y-%m-%d %H:%M"),
+            format(lubridate::with_tz(x$to, tz), "%Y-%m-%d %H:%M %Z")
+          )
+        ),
+        tags$ul(
+          tags$li(tags$strong(x$new), " new records will be added"),
+          if (x$existing > 0) {
+            tags$li(
+              tags$strong(x$existing),
+              " records are already stored and will be added to this experiment"
+            )
+          },
+          if (x$linked > 0) {
+            tags$li(tags$strong(x$linked), " records are already in this experiment")
+          },
+          if (x$outside > 0) {
+            tags$li(
+              tags$strong(x$outside),
+              " records are outside the recording periods and will be skipped"
+            )
+          }
+        ),
+        if (x$new + x$existing == 0) tags$p(tags$strong("There is nothing to upload."))
+      )
+    })
+
+    ## run the upload
+    observeEvent(input$confirm_upload, {
+      req(upload())
+      removeModal()
+      data$upload_device_data(upload()$records)
+      upload(NULL)
     })
 
     # unlinked devices ===========
