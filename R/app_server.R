@@ -10,6 +10,10 @@ ml_server <- function(
   function(input, output, session) {
     # accessible core ids
     experiment_core_ids <- reactiveVal(value = character())
+    # custom labels of the experiment's devices (shown in the device control table)
+    experiment_device_labels <- reactiveVal(
+      value = tibble(coreid = character(), label = character())
+    )
 
     # theme
     current_theme <- reactiveVal(NA_character_) # start with NA so serverside theme application make sure it loads in correct order
@@ -38,6 +42,7 @@ ml_server <- function(
       token,
       timezone = reactive(input$timezone),
       accessible_core_ids = experiment_core_ids,
+      device_labels = experiment_device_labels,
       quick_actions = ml_quick_actions(),
       # µLogger-specific value editors (resistance readings in Ohm)
       additional_value_types = list(
@@ -53,6 +58,7 @@ ml_server <- function(
       "data",
       token,
       experiment_core_ids = experiment_core_ids,
+      experiment_device_labels = experiment_device_labels,
       get_timezone = reactive(input$timezone),
       get_user_id = reactive({
         user_id

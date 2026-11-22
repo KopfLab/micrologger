@@ -3,6 +3,7 @@ data_server <- function(
   id,
   particle_token,
   experiment_core_ids,
+  experiment_device_labels = function(...) NULL,
   get_timezone,
   get_user_id,
   get_user_first_name,
@@ -318,7 +319,7 @@ data_server <- function(
           ns = ns,
           user_msg = "Devices offline",
           warning = format_inline(
-            "{sum(!success)}/{length(success)} of the {qty(length(success))}device{?s} under control of this experiment ({device_info$core_name[!success]}) could not be reached and {?is/are} not recording. Check that {?it is/they are} online and pause + resume the experiment recording to try again."
+            "{sum(!success)}/{length(success)} of the {qty(length(success))}device{?s} under control of this experiment ({device_info$core_name[!success]}) could not be reached and {?is/are} not recording. If {?it is/they are} online, pause + resume the experiment recording to try again. If {?it is/they are} offline, connect to {?it/them} via bluetooth with the SDDS browser (devices.kopflab.org) and click {.strong Start recording} at the top of the page."
           )
         )
       }
@@ -378,7 +379,7 @@ data_server <- function(
           ns = ns,
           user_msg = "Devices offline",
           warning = format_inline(
-            "{sum(!success)}/{length(success)} of the {qty(length(success))}device{?s} under control of this experiment ({device_info$core_name[!success]}) could not be reached and may still be recording. Check that {?it is/they are} online and resume + pause the experiment recording to try to stop again."
+            "{sum(!success)}/{length(success)} of the {qty(length(success))}device{?s} under control of this experiment ({device_info$core_name[!success]}) could not be reached and may still be recording. If {?it is/they are} online, resume + pause the experiment recording to try to stop again. If {?it is/they are} offline, connect to {?it/them} via bluetooth with the SDDS browser (devices.kopflab.org) and click {.strong Stop recording} at the top of the page."
           )
         )
       }
@@ -425,9 +426,15 @@ data_server <- function(
           filter(control_exp_id == values$current_exp_id) |>
           pull(core_id) |>
           experiment_core_ids()
+        # and the custom labels of the devices
+        result |>
+          filter(!is.na(.data$label) & nzchar(.data$label)) |>
+          select(coreid = "core_id", "label") |>
+          experiment_device_labels()
       } else {
         # no core ids are accessible
         experiment_core_ids(c())
+        experiment_device_labels(tibble(coreid = character(), label = character()))
       }
       return(result)
     })
@@ -452,27 +459,31 @@ data_server <- function(
       # bring in system information for connected devices (function returns out with result and conditions)
       connected_devices <- dplyr::filter(exp_devices, .data$connected)$core_id
       if (length(connected_devices) > 0) {
+        # only the publishing settings are needed: pulled straight out of the
+        # SYSTEM json (which can be cut off since the SYSTEM tree got bigger)
         sys_info_out <-
-          sddsParticle::particle_get_and_parse_sdds_systems(
-            token = particle_token,
+          ml_get_devices_publishing(
             core_ids = connected_devices,
-            timezone = get_timezone()
-          )
+            token = particle_token
+          ) |>
+          try_catch_cnds()
         sys_info_out |> log_cnds(ns = ns)
         if (!is.null(sys_info_out$result)) {
           exp_devices <- exp_devices |>
-            left_join(
-              sys_info_out$result |>
-                select(
-                  any_of(c(
-                    "core_id" = "coreid",
-                    "publishing.record",
-                    "publishing.globalInterval_ms"
-                  ))
-                ),
-              by = "core_id"
-            )
+            left_join(sys_info_out$result, by = "core_id")
         }
+      }
+      # devices that are not connected to the cloud can't be asked -> "offline"
+      # (connected devices whose settings could not be read stay empty)
+      for (col in c("publishing.record", "publishing.globalInterval_ms")) {
+        if (!col %in% names(exp_devices)) {
+          exp_devices[[col]] <- NA_character_
+        }
+        exp_devices[[col]] <- if_else(
+          !is.na(exp_devices$connected) & exp_devices$connected,
+          exp_devices[[col]],
+          "offline"
+        )
       }
       return(exp_devices)
     })

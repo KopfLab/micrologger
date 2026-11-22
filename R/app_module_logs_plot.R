@@ -68,10 +68,18 @@ logs_plot_server <- function(
       dom = "t"
     )
 
-    ## select all by default when we first load
+    ## select all devices by default when an experiment is loaded (a newly
+    ## selected experiment always starts with all devices, i.e. all data plotted),
+    ## and whenever nothing is selected
+    devices_selected_for_exp <- reactiveVal(NULL)
     observeEvent(log_devices$is_table_reloaded(), {
-      if (is_empty(log_devices$get_selected_ids())) {
-        log_devices$select_all()
+      exp_id <- data$get_current_exp()$exp_id
+      if (
+        !identical(devices_selected_for_exp(), exp_id) ||
+          is_empty(log_devices$get_selected_ids())
+      ) {
+        log_devices$select_rows(ids = log_devices$get_all_ids())
+        devices_selected_for_exp(exp_id)
       }
     })
 
