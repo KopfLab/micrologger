@@ -175,3 +175,67 @@ get_logs_for_download_in_app <- function(logs, devices, filter_paths) {
     filter(.data$device %in% !!devices) |>
     filter(.data$path %in% filter_paths)
 }
+
+
+# device publishing settings ==========
+
+# get the publishing settings (record, global interval) of devices from their
+# SDDS SYSTEM variable. The particle variable is limited in size and the SYSTEM
+# tree got big enough that the JSON can be cut off, so instead of parsing the
+# whole JSON the two values are pulled out with regular expressions
+# (missing ones are NA)
+# @return tibble with core_id, publishing.record, publishing.globalInterval_ms
+ml_get_devices_publishing <- function(core_ids, token) {
+  core_ids |>
+    purrr::map(function(core_id) {
+      json <- tryCatch(
+        sddsParticle::particle_get_sdds_system(core_id, token = token),
+        error = function(e) {
+          cli_warn(
+            "could not get the SYSTEM information of device {.field {core_id}}",
+            parent = e
+          )
+          NA_character_
+        }
+      )
+      ml_extract_publishing(json) |>
+        mutate(core_id = !!core_id, .before = 1L)
+    }) |>
+    bind_rows()
+}
+
+# pull the publishing settings out of a (possibly incomplete) SYSTEM json
+ml_extract_publishing <- function(json) {
+  json <- if (is.null(json) || length(json) == 0) NA_character_ else as.character(json[1])
+  # the publishing settings (record/globalInterval_ms only exist there)
+  record <- stringr::str_match(json, '"record"\\s*:\\s*"?([A-Za-z_]+)"?')[, 2]
+  interval <- stringr::str_match(json, '"globalInterval_ms"\\s*:\\s*([0-9]+)')[, 2] |>
+    as.numeric()
+  tibble(
+    publishing.record = record,
+    publishing.globalInterval_ms = format_interval_ms(interval)
+  )
+}
+
+# format an interval in ms, e.g. 1800000 -> "30 min", 5400000 -> "1 hour 30 min"
+format_interval_ms <- function(ms) {
+  purrr::map_chr(ms, function(x) {
+    if (is.na(x)) {
+      return(NA_character_)
+    }
+    if (x < 1000) {
+      return(sprintf("%g ms", x))
+    }
+    secs <- x / 1000
+    parts <- c(
+      day = secs %/% 86400,
+      hour = (secs %% 86400) %/% 3600,
+      min = (secs %% 3600) %/% 60,
+      sec = round(secs %% 60, 3)
+    )
+    parts <- parts[parts > 0]
+    labels <- names(parts)
+    labels[labels %in% c("day", "hour") & parts != 1] <- paste0(labels[labels %in% c("day", "hour") & parts != 1], "s")
+    paste(sprintf("%g %s", parts, labels), collapse = " ")
+  })
+}
