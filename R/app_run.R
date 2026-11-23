@@ -38,6 +38,12 @@ ml_run_gui <- function(
   # startup
   log_info("\n\n========================================================")
   log_info("starting micrologger GUI", if (shiny::in_devmode()) " in DEV mode")
+  log_info(
+    "using micrologger v",
+    as.character(utils::packageVersion("micrologger")),
+    " and sddsParticle v",
+    as.character(utils::packageVersion("sddsParticle"))
+  )
 
   # safety check for parameters
   user_id |>
