@@ -72,10 +72,10 @@ get_experiment_devices_for_table_in_app <- function(
     ) |>
     simplify_owner(user_id = user_id) |>
     mutate(
-      # devices without a name (e.g. not known to the particle cloud): show the device ID
+      # devices without a name (e.g. not known to the particle cloud)
       core_name = if_else(
         is.na(.data$core_name) | !nzchar(.data$core_name),
-        .data$core_id,
+        "???",
         .data$core_name
       ),
       version = sddsParticle:::version_value_to_text(.data$version),
@@ -118,10 +118,10 @@ get_unlinked_devices_for_table_in_app <- function(devices, timezone, user_id) {
     ) |>
     simplify_owner(user_id = user_id) |>
     mutate(
-      # devices without a name (e.g. not known to the particle cloud): show the device ID
+      # devices without a name (e.g. not known to the particle cloud)
       core_name = if_else(
         is.na(.data$core_name) | !nzchar(.data$core_name),
-        .data$core_id,
+        "???",
         .data$core_name
       ),
       version = sddsParticle:::version_value_to_text(.data$version),

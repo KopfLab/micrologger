@@ -96,7 +96,9 @@ ml_server <- function(
       data = data,
       get_timezone = reactive(input$timezone),
       on_new_experiment = function(exp_id) {
-        bslib::nav_select("main_nav", "experiments")
+        # the callback runs inside the devices module -> use the top level session,
+        # otherwise the id gets the module namespace and nothing happens
+        bslib::nav_select("main_nav", "experiments", session = session)
         experiments$open_new_experiment(exp_id)
       }
     )
