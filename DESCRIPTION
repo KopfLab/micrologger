@@ -1,6 +1,6 @@
 Package: micrologger
 Title: GUI for GEOM µLoggers
-Version: 0.6.1
+Version: 0.6.2
 Authors@R: 
     person("Sebastian", "Kopf", , "seb.kopf@gmail.com", role = c("aut", "cre"))
 Description: Provides a graphical user interface to interact with µLoggers including setting up experiments, visualizating data, and sending commands.
@@ -42,7 +42,7 @@ Imports:
     methods,
     stats,
     utils,
-    sddsParticle (>= 0.8.0)
+    sddsParticle (>= 0.8.1)
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
